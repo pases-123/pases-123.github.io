@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="es-AR">
 <head>
 <meta charset="UTF-8">
@@ -1122,7 +1122,10 @@ window.iniciarAppPrincipal = iniciarAppPrincipal;
   const closeBtn = document.getElementById('laboStandaloneCloseBtn');
 
   function openLaboStandalone(){
-    if(!frame.src) frame.src = 'conversor-labo.html?v=' + encodeURIComponent(LABO_VERSION);
+    if(!frame.dataset.loaded){
+      frame.src = 'conversor-labo.html?v=' + encodeURIComponent(LABO_VERSION);
+      frame.dataset.loaded = '1';
+    }
     overlay.classList.add('open');
   }
   function closeLaboStandalone(){
