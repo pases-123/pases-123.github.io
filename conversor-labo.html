@@ -387,7 +387,7 @@ function fld(id){ return document.getElementById(id); }
           id:'orina_fq', boldLabel:'UROANALISIS (ORINA COMPLETA)', subheaderRe:null,
           fields:[
             {key:'color',     out:'color', mode:'always',      labelRe:/\bcolor\b/i},
-            {key:'aspecto',   out:null,    mode:'always',      labelRe:/\baspecto\b/i},
+            {key:'aspecto',   out:null,    mode:'aspectoQual', labelRe:/\baspecto\b/i},
             {key:'densidad',  out:'δ',     mode:'always',      labelRe:/\bdensidad\b/i},
             {key:'ph',        out:'pH',    mode:'always',      labelRe:/\bph\b/i},
             {key:'proteinas', out:'proteinas', mode:'cross',    labelRe:/\bprote[ií]nas\b/i},
@@ -424,7 +424,7 @@ function fld(id){ return document.getElementById(id); }
             {key:'tipo_muestra', out:null, mode:'always', labelRe:/\btipo\s+de\s+muestra\b/i},
             {marker:/\bEXAMEN\s+FISICO-?\s*QUIMICO\b/i},
             {key:'color2',    out:'color', mode:'always', labelRe:/\bcolor\b/i},
-            {key:'aspecto2',  out:null,    mode:'always', labelRe:/\baspecto\b/i},
+            {key:'aspecto2',  out:null,    mode:'aspectoQual', labelRe:/\baspecto\b/i},
             {key:'densidad2', out:'δ',     mode:'always', labelRe:/\bdensidad\b/i},
             {key:'ph2',       out:'pH',    mode:'always', labelRe:/\bph\b/i},
             {key:'prot2',     out:'Prot', mode:'skipDefault', labelRe:/\bprote[ií]nas\b/i, defaultRe:/no\s+contiene/i},
@@ -443,9 +443,12 @@ function fld(id){ return document.getElementById(id); }
             {marker:/\bEXAMEN\s+MICROSC[OÓ]PICO\b/i},
             {key:'celulas',      out:'Células', mode:'always', labelRe:/\bc[eé]lulas\b/i},
             {key:'cel_redondas', out:'Células redondas', mode:'skipDefault', labelRe:/\bc[eé]lulas\s+redondas\b/i, defaultRe:/no\s+se\s+observan/i},
+            {key:'hematies2',    out:'Hematíes', mode:'skipDefault', labelRe:/\bhemat[ií]es\b/i, defaultRe:/no\s+se\s+observan/i},
             {key:'leucos2',      out:'Leucocitos', mode:'always', labelRe:/\bleucocitos\b/i},
             {key:'germenes',     out:'Gérmenes', mode:'always', labelRe:/\bg[eé]rmenes\b/i},
             {key:'levaduras',    out:'Levaduras', mode:'always', labelRe:/\blevaduras\b/i},
+            {key:'cristales2',   out:'Cristales', mode:'skipDefault', labelRe:/\bcristales\b/i, defaultRe:/no\s+se\s+observan/i},
+            {key:'cilindros2',   out:'Cilindros', mode:'skipDefault', labelRe:/\bcilindros\b/i, defaultRe:/no\s+se\s+observan/i},
             {key:'mucus_m',      out:'Mucus', mode:'skipDefault', labelRe:/\bmucus\b/i, defaultRe:/no\s+se\s+observa\b/i},
           ]
         },
@@ -767,6 +770,12 @@ function fld(id){ return document.getElementById(id); }
 
   function laboClassifyTextField(field, rawValue){
     if(field.mode==='always') return {text: rawValue, abnormal:false};
+    if(field.mode==='aspectoQual'){
+      // "Límpido" es el hallazgo esperable; cualquier otra cosa (Turbio,
+      // Ligeramente turbio, etc.) se resalta como hallazgo anormal.
+      const abnormal = !/^l[ií]mpido\b/i.test(rawValue.trim());
+      return {text: rawValue, abnormal};
+    }
     if(field.mode==='skipDefault'){
       if(field.defaultRe.test(rawValue)) return null;
       return {text: rawValue, abnormal:true};
