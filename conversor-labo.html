@@ -1,1 +1,1603 @@
+<!DOCTYPE html>
+<!--
+ Versión: 9 (13/09/2026)
+-->
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transformador de laboratorio → LABO</title>
+
+<style>
+  :root{
+    --ink:#23302c; --paper:#faf7f0; --panel:#fff; --muted:#7a7468;
+    --line-soft:#dcd6c8; --field-bg:#fcfbf7; --accent-dark:#2f5d5a; --danger:#c0392b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:'IBM Plex Sans',Arial,sans-serif;padding:14px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;background:var(--panel);border:2px solid var(--ink);border-radius:4px;box-shadow:0 8px 26px rgba(0,0,0,.15);}
+  .head{padding:14px 20px;border-bottom:2px solid var(--ink);}
+  .head h1{margin:0 0 4px;font-size:16px;}
+  .head .sub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);}
+  .body{padding:16px 20px 20px;}
+  .grid{display:grid;grid-template-columns:1fr 34px 1fr;gap:0 14px;align-items:stretch;}
+  @media (max-width:860px){ .grid{grid-template-columns:1fr;} .pipe{display:none;} }
+  .panel{display:flex;flex-direction:column;}
+  .panel h3{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-dark);margin:0 0 7px;}
+  #laboInput{min-height:320px;flex:1;font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px;border:1px solid var(--line-soft);background:var(--field-bg);border-radius:2px;resize:vertical;width:100%;}
+  .controls{display:flex;align-items:center;gap:8px;margin-top:9px;flex-wrap:wrap;}
+  .controls label{font-size:10.5px;color:var(--muted);font-weight:600;}
+  .controls button{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:11.5px;padding:7px 12px;border-radius:2px;cursor:pointer;border:none;}
+  .btn-primary{background:var(--accent-dark);color:#fff;}
+  .btn-primary:hover{opacity:.85;}
+  .btn-secondary{background:transparent;border:1px solid var(--ink) !important;color:var(--ink);}
+  .btn-secondary:hover{background:var(--ink);color:var(--paper);}
+  .btn-secondary.active{background:var(--accent-dark) !important;border-color:var(--accent-dark) !important;color:var(--paper);}
+  .btn-tiny{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:10.5px;padding:4px 9px;border-radius:2px;cursor:pointer;border:1px solid var(--line-soft);background:#fff;color:var(--muted);}
+  .btn-tiny:hover{border-color:var(--accent-dark);color:var(--accent-dark);}
+  .pipe{display:flex;align-items:center;justify-content:center;}
+  .pipe svg{width:20px;height:56px;}
+  #laboOutput{
+    flex:1;min-height:320px;border:1px solid var(--line-soft);background:var(--field-bg);
+    padding:11px 13px;font-family:Calibri,Carlito,'Segoe UI',Arial,sans-serif;font-size:12pt;line-height:1.6;
+    white-space:pre-wrap;word-break:break-word;overflow:auto;border-radius:2px;color:#000;
+  }
+  #laboOutput:empty::before{content:"El resultado formateado va a aparecer acá.";color:var(--muted);font-style:italic;font-size:11.5px;font-family:'IBM Plex Sans',Arial,sans-serif;}
+  .legend{display:flex;gap:14px;margin-top:7px;font-size:10.5px;color:var(--muted);}
+  .legend .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle;}
+  .legend .n .dot{background:var(--ink);}
+  .legend .a .dot{background:var(--danger);}
+  .out-footer{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  #laboStatus{font-size:11px;color:var(--accent-dark);font-family:'IBM Plex Mono',monospace;min-height:14px;}
+  .note{font-size:10.5px;color:var(--muted);margin-top:12px;line-height:1.5;}
+
+  .checklist-wrap{margin-top:18px;border-top:1px solid var(--line-soft);padding-top:12px;}
+  .checklist-wrap summary{cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-dark);margin:0 0 4px;user-select:none;}
+  .checklist-toolbar{display:flex;gap:8px;margin:10px 0 12px;}
+  .checklist-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+  .catgroup{border:1px solid var(--line-soft);border-radius:3px;padding:8px 10px;background:var(--field-bg);}
+  .catgroup h4{margin:0 0 6px;font-size:10.5px;font-weight:700;color:var(--ink);text-transform:uppercase;letter-spacing:.03em;}
+  .catgroup label{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink);padding:2px 0;cursor:pointer;}
+  .catgroup input[type=checkbox]{margin:0;cursor:pointer;}
+
+  .gasa-wrap{display:none;flex-direction:column;gap:6px;margin-top:12px;border-top:1px dashed var(--accent-dark);padding-top:10px;}
+  .gasa-wrap.show{display:flex;}
+  .gasa-wrap .gasa-label{font-size:11px;color:var(--accent-dark);font-weight:700;line-height:1.4;}
+  #laboGasaInput{min-height:110px;font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px;border:1px solid var(--accent-dark);background:var(--field-bg);border-radius:2px;resize:vertical;width:100%;}
+
+  .gascalc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:10px;}
+  .gascalc-grid label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;color:var(--muted);font-weight:600;}
+  .gascalc-grid input{font-family:'IBM Plex Mono',monospace;font-size:12px;padding:6px;border:1px solid var(--line-soft);background:var(--field-bg);border-radius:2px;}
+  .gascalc-result{margin-top:10px;font-size:12px;line-height:1.6;background:var(--field-bg);border:1px solid var(--line-soft);border-radius:2px;padding:9px 11px;min-height:16px;}
+  .gascalc-result:empty{display:none;}
+  .gascalc-result b{color:var(--accent-dark);}
+
+  html.labo-copying, html.labo-copying body, html.labo-copying *{
+    background:transparent !important; background-color:transparent !important; background-image:none !important;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="head">
+    <h1>Transformador de laboratorio → LABO</h1>
+    <div class="sub">Pegá el texto tal como lo copiás de la página del laboratorio. Se convierte solo al pegar. Genera un renglón completo y, debajo, el renglón resumen.</div>
+  </div>
+  <div class="body">
+    <div class="grid">
+      <div class="panel">
+        <h3>1. Datos crudos del laboratorio</h3>
+        <textarea id="laboInput" placeholder="Pegá acá el texto copiado del laboratorio..."></textarea>
+        <div class="controls">
+          <label for="laboFecha">Fecha:</label>
+          <input type="date" id="laboFecha">
+          <button type="button" class="btn-primary" id="laboProcesarBtn">Procesar</button>
+          <button type="button" class="btn-secondary" id="laboLimpiarBtn">Limpiar</button>
+          <button type="button" class="btn-secondary" id="laboLabCompletoBtn">LAB Completo</button>
+        </div>
+        <div class="gasa-wrap" id="laboGasaWrap">
+          <div class="gasa-label">Se detectó una punción de líquido ascítico con Albúmina. Para calcular el GASA, pegá acá el laboratorio de sangre (plasmático) que incluya Albúmina:</div>
+          <textarea id="laboGasaInput" placeholder="Pegá acá el laboratorio plasmático (debe incluir Albúmina)..."></textarea>
+        </div>
+      </div>
+
+      <div class="pipe">
+        <svg viewBox="0 0 22 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <line x1="11" y1="2" x2="11" y2="52" stroke="#c9c4b8" stroke-width="2" stroke-dasharray="3 4"/>
+          <path d="M4 46 L11 56 L18 46" stroke="#2f5d5a" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+
+      <div class="panel">
+        <h3>2. Líneas listas para LABO</h3>
+        <div id="laboOutput" contenteditable="true" spellcheck="false"></div>
+        <div class="legend">
+          <span class="n"><span class="dot"></span>Normal</span>
+          <span class="a"><span class="dot"></span>Alterado</span>
+        </div>
+        <div class="out-footer">
+          <button type="button" class="btn-secondary" id="laboCopiarBtn">Copiar con formato</button>
+          <span id="laboStatus"></span>
+        </div>
+        <p class="note">"Copiar con formato" copia negrita y rojo, letra negra pura y sin fondo de color, para pegar directo en Google Docs. El texto de arriba también es editable antes de copiarlo. Arriba va el renglón completo (todos los parámetros habilitados); abajo, separado por una línea en blanco, va el renglón resumen (listado core + hallazgos alterados fuera de lista).</p>
+      </div>
+    </div>
+
+    <details class="checklist-wrap" id="laboGasCalcDetails">
+      <summary>3. Calculadora de gases en sangre (uso manual)</summary>
+      <div class="gascalc-grid">
+        <label>pH <input type="number" step="0.001" id="gcPh"></label>
+        <label>pCO2 (mmHg) <input type="number" step="0.1" id="gcPco2"></label>
+        <label>HCO3 (mEq/L) <input type="number" step="0.1" id="gcHco3"></label>
+        <label>pO2 (mmHg) <input type="number" step="0.1" id="gcPo2"></label>
+        <label>FiO2 (%) <input type="number" step="1" id="gcFio2" placeholder="21 = aire ambiente"></label>
+        <label>Edad (años) <input type="number" step="1" id="gcEdad"></label>
+      </div>
+      <div class="controls">
+        <button type="button" class="btn-primary" id="gcCalcularBtn">Calcular</button>
+        <button type="button" class="btn-secondary" id="gcLimpiarBtn">Limpiar</button>
+      </div>
+      <div id="gcResultado" class="gascalc-result"></div>
+      <p class="note">Se autocompleta y calcula solo al pegar un laboratorio con gases en sangre; también se puede cargar y calcular a mano (se recalcula solo, a medida que se van cargando los valores). Fórmulas: Ac. Met. (Winter) pCO2 esp. = 1.5×HCO3 + 8 ± 2 · Alc. Met. ΔpCO2 = ΔHCO3 × 0.6 · Ac. Resp. aguda ΔHCO3 = ΔpCO2 × 0.1 (corregida ×0.3) · Alc. Resp. aguda ΔHCO3 = ΔpCO2 × 0.2 (corregida ×0.4) · PAFI = pO2/FiO2 × 100 · PO2 esperada por edad = 102 − (0.33 × edad).</p>
+    </details>
+
+    <details class="checklist-wrap">
+      <summary>4. Parámetros a incluir (tildados por defecto)</summary>
+      <div class="checklist-toolbar">
+        <button type="button" class="btn-tiny" id="laboMarcarTodos">Marcar todos</button>
+        <button type="button" class="btn-tiny" id="laboDesmarcarTodos">Desmarcar todos</button>
+      </div>
+      <div class="checklist-grid" id="laboChecklistGrid"></div>
+    </details>
+  </div>
+</div>
+
+<script>
+function fld(id){ return document.getElementById(id); }
+
+(function(){
+  const $input = fld('laboInput');
+  const $fecha = fld('laboFecha');
+  const $output = fld('laboOutput');
+  const $status = fld('laboStatus');
+  const $checklistGrid = fld('laboChecklistGrid');
+  const $gasaWrap = fld('laboGasaWrap');
+  const $gasaInput = fld('laboGasaInput');
+  const $labCompletoBtn = fld('laboLabCompletoBtn');
+  const $gasCalcDetails = fld('laboGasCalcDetails');
+  const $gcResultado = fld('gcResultado');
+  let laboFullMode = false;
+
+  function laboToday(){
+    const t = new Date();
+    const y = t.getFullYear();
+    const m = String(t.getMonth()+1).padStart(2,'0');
+    const d = String(t.getDate()).padStart(2,'0');
+    $fecha.value = `${y}-${m}-${d}`;
+  }
+
+  function laboToNumber(str){
+    if(str==null) return null;
+    let s = String(str).trim();
+    s = s.replace(/[^\d.,-]/g,'');
+    if(s==='') return null;
+    s = s.replace(',', '.');
+    const n = parseFloat(s);
+    return isNaN(n) ? null : n;
+  }
+  function laboLooksLikeUnit(line){
+    const s = line.trim();
+    if(s==='') return false;
+    if(/^-?\d+([.,]\d+)?$/.test(s)) return false;
+    return /^[A-Za-zµ³²%/º.\-\d\s]{1,18}$/.test(s) && /[A-Za-zµ%]/.test(s);
+  }
+  function laboLooksLikeRange(line){
+    const s = line.trim().toLowerCase();
+    if(s==='') return false;
+    if(/estad[ií]o/.test(s)) return false;
+    if(/-\s*\d+([.,]\d+)?\s*-\s*\d+([.,]\d+)?/.test(s)) return true;
+    if(/\d+([.,]\d+)?\s*-\s*\d+([.,]\d+)?/.test(s)) return true;
+    if(/hasta\s*\d+([.,]\d+)?/.test(s)) return true;
+    if(/mayor\s*a?\s*\d+([.,]\d+)?/.test(s)) return true;
+    if(/menor\s*a?\s*\d+([.,]\d+)?/.test(s)) return true;
+    if(/[<>]=?\s*\d+([.,]\d+)?/.test(s)) return true;
+    return false;
+  }
+  function laboParseRange(line, sex){
+    const sLower = line.trim().toLowerCase();
+    if(/\bhombre\b/.test(sLower) && /\bmujer\b/.test(sLower)){
+      if(!sex) return null;
+      const re = sex==='M'
+        ? /\bhombre\b\s*:?\s*([\s\S]*?)(?=\bmujer\b|$)/
+        : /\bmujer\b\s*:?\s*([\s\S]*)/;
+      const gm = sLower.match(re);
+      if(gm && gm[1]) return laboParseRangeSimple(gm[1]);
+      return null;
+    }
+    return laboParseRangeSimple(line);
+  }
+  function laboParseRangeSimple(line){
+    const s = line.trim().toLowerCase().replace(/,/g,'.');
+    const candidates = [];
+    let m;
+    m = s.match(/(-?\d+(?:\.\d+)?)\s*-\s*(-?\d+(?:\.\d+)?)/);
+    if(m) candidates.push({idx:m.index, range:{low: parseFloat(m[1]), high: parseFloat(m[2])}});
+    m = s.match(/hasta\s*(-?\d+(?:\.\d+)?)/);
+    if(m) candidates.push({idx:m.index, range:{low: -Infinity, high: parseFloat(m[1])}});
+    m = s.match(/menor\s*a?\s*(-?\d+(?:\.\d+)?)/);
+    if(m) candidates.push({idx:m.index, range:{low: -Infinity, high: parseFloat(m[1])}});
+    m = s.match(/mayor\s*a?\s*(-?\d+(?:\.\d+)?)/);
+    if(m) candidates.push({idx:m.index, range:{low: parseFloat(m[1]), high: Infinity}});
+    m = s.match(/<=?\s*(-?\d+(?:\.\d+)?)/);
+    if(m) candidates.push({idx:m.index, range:{low: -Infinity, high: parseFloat(m[1])}});
+    m = s.match(/>=?\s*(-?\d+(?:\.\d+)?)/);
+    if(m) candidates.push({idx:m.index, range:{low: parseFloat(m[1]), high: Infinity}});
+    if(candidates.length===0) return null;
+    candidates.sort((a,b)=>a.idx-b.idx);
+    return candidates[0].range;
+  }
+  function laboIsAbnormal(value, range){
+    if(value==null || !range) return false;
+    return value < range.low || value > range.high;
+  }
+  function laboDir(value, range){
+    if(value==null || !range) return null;
+    if(value < range.low) return 'bajo';
+    if(value > range.high) return 'alto';
+    return null;
+  }
+  function laboDetectAge(flat){
+    const m = flat.match(/edad\s*:?\s*(\d{1,3})\s*a[ñn]os/i);
+    if(!m) return null;
+    const n = parseInt(m[1], 10);
+    return isNaN(n) ? null : n;
+  }
+  function laboFechaFormateada(){
+    if(!$fecha.value) return '';
+    const [y,m,d] = $fecha.value.split('-');
+    return `${d}/${m}/${y}`;
+  }
+  function laboDetectSex(flat){
+    const m = flat.match(/sexo\s*:?\s*(masculino|femenino)/i);
+    if(!m) return null;
+    return /femenino/i.test(m[1]) ? 'F' : 'M';
+  }
+
+  const LABO_MASTER = [
+    {code:'GB',            cat:'hemograma', kind:'std',    l1:true,  l2:true,  aliases:[/\brecuento de gl[oó]bulos blancos\b/i]},
+    {code:'N',             cat:'hemograma', kind:'pct',    l1:true,  l2:true,  aliases:[/\bneutrofilos?\s+segmentados\b/i]},
+    {code:'L',             cat:'hemograma', kind:'pct',    l1:true,  l2:true,  aliases:[/\blinfocitos\b/i]},
+    {code:'M',             cat:'hemograma', kind:'pct',    l1:false, l2:true,  aliases:[/\bmonocitos\b/i]},
+    {code:'E',             cat:'hemograma', kind:'pct',    l1:false, l2:true,  aliases:[/\beosinofilos\b/i]},
+    {code:'B',             cat:'hemograma', kind:'pct',    l1:false, l2:true,  aliases:[/\bbasofilos\b/i]},
+    {code:'GR',            cat:'hemograma', kind:'std',    l1:true,  l2:true,  aliases:[/\brecuento de gl[oó]bulos rojos\b/i]},
+    {code:'HB',            cat:'hemograma', kind:'std',    l1:true,  l2:true,  aliases:[/\bhemoglobina\b/i]},
+    {code:'HTO',           cat:'hemograma', kind:'std',    l1:true,  l2:true,  aliases:[/\bhematocrito\b/i]},
+    {code:'PLAQ',          cat:'hemograma', kind:'plaq',   l1:true,  l2:true,  aliases:[/\brecuento de plaquetas\b/i]},
+    {code:'Reticulocitos', cat:'hemograma', kind:'pctstd', l1:false, l2:true,  aliases:[/\breticulocitos\b/i]},
+    {code:'ERS',           cat:'hemograma', kind:'std',    l1:false, l2:true,  aliases:[/\beritrosedimentaci[oó]n\b/i]},
+
+    {code:'VCM',  cat:'indices', kind:'std', l1:false, l2:true, aliases:[/\bvcm\b/i]},
+    {code:'HCM',  cat:'indices', kind:'std', l1:false, l2:true, aliases:[/\bhcm\b/i]},
+    {code:'CHCM', cat:'indices', kind:'std', l1:false, l2:true, aliases:[/\bchcm\b/i]},
+    {code:'RDW',  cat:'indices', kind:'std', l1:false, l2:true, aliases:[/\brdw\b/i]},
+    {code:'VPM',  cat:'indices', kind:'std', l1:false, l2:true, aliases:[/\bvpm\b/i]},
+
+    {code:'TP%',  cat:'coagulograma', kind:'pctstd', l1:false, l2:true, aliases:[/\btiempo de protrombina\b/i]},
+    {code:'RIN',  cat:'coagulograma', kind:'raw',    l1:false, l2:true, aliases:[/\brin\b/i]},
+    {code:'KPTT', cat:'coagulograma', kind:'std',    l1:false, l2:true, aliases:[/\btromboplastina parcial activada\b/i, /\bk\.?p\.?t\.?t\.?/i]},
+
+    {code:'PCR',   cat:'quimica', kind:'std',    l1:true,  l2:true,  aliases:[/\bproteina c reactiva\b/i]},
+    {code:'GLUC',  cat:'quimica', kind:'std',    l1:true,  l2:true,  aliases:[/\bglucosa\b/i]},
+    {code:'HbA1c', cat:'quimica', kind:'pctstd', l1:true,  l2:false, aliases:[/\bhba1c\b/i, /\bhemoglobina glicosilada\b/i]},
+    {code:'UREA',  cat:'quimica', kind:'std',    l1:true,  l2:true,  aliases:[/\burea\b/i]},
+    {code:'CR',    cat:'quimica', kind:'std',    l1:true,  l2:true,  aliases:[/\bcreatinina\b/i]},
+    {code:'FG',    cat:'quimica', kind:'std',    l1:true,  l2:true,  aliases:[/\bfiltrado glomerular por ckd-?epi\b/i]},
+    {code:'LDH',   cat:'quimica', kind:'std',    l1:false, l2:true,  aliases:[/\blactato deshidrogenasa\b/i]},
+    {code:'Amilasemia', cat:'quimica', kind:'std', l1:true, l2:true, aliases:[/\bamilasemia\b/i]},
+
+    {code:'CPK',       cat:'cardiaco', kind:'std', l1:true, l2:true, aliases:[/\bcreatinfosfoquinasa\b/i, /\bcpk\b/i]},
+    {code:'Troponina', cat:'cardiaco', kind:'std', l1:true, l2:true, aliases:[/\btroponina\s+i\s+cardiaca\s+ultrasensible\b/i, /\btroponina\s+i\b/i, /\btroponina\b/i]},
+
+
+    {code:'Na', cat:'ionograma', kind:'std', l1:true, l2:true, aliases:[/\bsodio\b/i]},
+    {code:'K',  cat:'ionograma', kind:'std', l1:true, l2:true, aliases:[/\bpotasio\b/i]},
+    {code:'CL', cat:'ionograma', kind:'std', l1:true, l2:true, aliases:[/\bcloro\b/i]},
+    {code:'Ca', cat:'ionograma', kind:'std', l1:true, l2:true, aliases:[/\bcalcemia\b/i]},
+    {code:'P',  cat:'ionograma', kind:'std', l1:true, l2:true, aliases:[/\bfosfatemia\b/i]},
+    {code:'Mg', cat:'ionograma', kind:'std', l1:true, l2:true, aliases:[/\bmagnesemia\b/i]},
+
+    {code:'GPT', cat:'hepatico', kind:'std', l1:true, l2:true, aliases:[/\btransaminasa gpt\b/i]},
+    {code:'GOT', cat:'hepatico', kind:'std', l1:true, l2:true, aliases:[/\btransaminasa got\b/i]},
+    {code:'FAL', cat:'hepatico', kind:'std', l1:true, l2:true, aliases:[/\bfosfatasa alcalina\b/i]},
+    {code:'BT',  cat:'hepatico', kind:'std', l1:true, l2:true, aliases:[/\bbilirrubina total\b/i]},
+    {code:'BD',  cat:'hepatico', kind:'std', l1:true, l2:true, aliases:[/\bbilirrubina directa\b/i]},
+    {code:'GGT',    cat:'hepatico', kind:'std', l1:false, l2:true, aliases:[/\bgamma-?glutamil transpeptidasa\b/i]},
+    {code:'Prot T', cat:'hepatico', kind:'std', l1:false, l2:true, aliases:[/\bproteinas totales\b/i]},
+    {code:'ALB', cat:'hepatico', kind:'std', l1:true, l2:true, aliases:[/\balbumina\b/i]},
+
+    {code:'colesterol T', cat:'lipidico', kind:'std', l1:false, l2:true, aliases:[/\bcolesterol total\b/i]},
+    {code:'HDL',          cat:'lipidico', kind:'std', l1:false, l2:true, aliases:[/\bhdl colesterol\b/i]},
+    {code:'No HDL',       cat:'lipidico', kind:'std', l1:false, l2:true, aliases:[/\bcolesterol no hdl\b/i]},
+    {code:'LDL',          cat:'lipidico', kind:'std', l1:false, l2:true, aliases:[/\bldl colesterol\b/i]},
+    {code:'Tg',           cat:'lipidico', kind:'std', l1:false, l2:true, aliases:[/\btrigliceridos\b/i]},
+
+    {code:'Fe',            cat:'ferrico', kind:'std',    l1:false, l2:true, aliases:[/(?<!de )\bhierro\b/i]},
+    {code:'transferrina',  cat:'ferrico', kind:'std',    l1:false, l2:true, aliases:[/\btransferrina\b/i]},
+    {code:'Sat Transf',    cat:'ferrico', kind:'pctstd', l1:false, l2:true, aliases:[/\bsaturaci[oó]n de transferrina\b/i]},
+    {code:'TIBC',          cat:'ferrico', kind:'std',    l1:false, l2:true, aliases:[/\btibc\b/i]},
+    {code:'UIBC',          cat:'ferrico', kind:'std',    l1:false, l2:true, aliases:[/\buibc\b/i]},
+    {code:'ferritina',     cat:'ferrico', kind:'std',    l1:false, l2:true, aliases:[/\bferritina\b/i]},
+
+    {code:'Ac Fólico',    cat:'vitaminas', kind:'std', l1:false, l2:true, aliases:[/\bacido f[oó]lico\b/i]},
+    {code:'vitamina B12', cat:'vitaminas', kind:'std', l1:false, l2:true, aliases:[/\bvitamina\s*b\s*-?\s*12\b/i]},
+
+    {code:'PSA',       cat:'oncologicos', kind:'std', l1:false, l2:true, aliases:[/\bpsa\b/i]},
+    {code:'PSA libre', cat:'oncologicos', kind:'raw', l1:false, l2:true, aliases:[/\bpsa libre\b/i]},
+    {code:'PSA L/T',   cat:'oncologicos', kind:'raw', l1:false, l2:true, aliases:[/\brelaci[oó]n psa libre\b/i]},
+
+    {code:'IgA', cat:'inmunologia', kind:'std', l1:false, l2:true, aliases:[/\binmunoglobulina a\b/i]},
+
+    {code:'VDRL',         cat:'serologia', kind:'qual', l1:false, l2:true, aliases:[/\bvdrl\b/i]},
+    {code:'HBc Total',    cat:'serologia', kind:'qual', l1:false, l2:true, aliases:[/\bhepatitis b\s*-\s*core total\b/i]},
+    {code:'HBc IgM',      cat:'serologia', kind:'qual', l1:false, l2:true, aliases:[/\bhepatitis b core\s*-\s*igm\b/i]},
+    {code:'HBsAc',        cat:'serologia', kind:'qual', l1:false, l2:true, aliases:[/\bhbsac\b/i]},
+    {code:'HBsAg',        cat:'serologia', kind:'qual', l1:false, l2:true, aliases:[/\bhbsag\b/i]},
+    {code:'HCV',          cat:'serologia', kind:'qual', l1:false, l2:true, aliases:[/\bhepatitis c\b/i, /\bhcv\b/i]},
+    {code:'HIV Ag',       cat:'serologia', kind:'qual', l1:false, l2:true, aliases:[/\bhiv antigeno\b/i]},
+    {code:'HIV Ac',       cat:'serologia', kind:'qual', l1:false, l2:true, aliases:[/\banti-hiv 1-2\b/i]},
+    {code:'Chagas ELISA', cat:'serologia', kind:'qual', l1:false, l2:true, aliases:[/\bchagas\b(?!\s*hai)/i]},
+    {code:'Chagas HAI',   cat:'serologia', kind:'qual', l1:false, l2:true, aliases:[/\bchagas hai\b/i]},
+
+    {code:'pH',          cat:'acidobase', kind:'gas', l1:false, l2:true, aliases:[/\bph\b/i], fixedRange:{low:7.35, high:7.45}},
+    {code:'pCO2',        cat:'acidobase', kind:'gas', l1:false, l2:true, aliases:[/\bpco2\b/i], fixedRange:{low:35, high:45}},
+    {code:'pO2',         cat:'acidobase', kind:'gas', l1:false, l2:true, aliases:[/\bpo2\b/i], fixedRange:{low:80, high:200}},
+    {code:'HCO3',        cat:'acidobase', kind:'gas', l1:false, l2:true, aliases:[/\bchco3\b/i], fixedRange:{low:22, high:26}},
+    {code:'base buffer', cat:'acidobase', kind:'gas', l1:false, l2:true, aliases:[/\bbase buffer\b/i], fixedRange:{low:-2, high:2}},
+    {code:'EB',          cat:'acidobase', kind:'gas', l1:false, l2:true, aliases:[/\bbeec\b/i], fixedRange:{low:-2, high:2}},
+    {code:'SO2',         cat:'acidobase', kind:'gas', l1:false, l2:true, aliases:[/\bso2\b/i], fixedRange:{low:95, high:100}},
+    {code:'Anión GAP',   cat:'acidobase', kind:'gas', l1:false, l2:true, aliases:[/\banion gap\b/i], fixedRange:{low:8, high:16}},
+    {code:'Ac Lac',      cat:'acidobase', kind:'std', l1:false, l2:true, aliases:[/\bacido l[aá]ctico\b/i]},
+  ];
+
+  const LABO_CATS = [
+    {id:'hemograma',    label:'Hemograma'},
+    {id:'indices',      label:'Índices hematimétricos'},
+    {id:'coagulograma', label:'Coagulograma'},
+    {id:'quimica',      label:'Química general (renal / glucemia / PCR / LDH / amilasa)'},
+    {id:'cardiaco',     label:'Marcadores cardíacos (CPK / Troponina)'},
+    {id:'ionograma',    label:'Ionograma (Na/K/Cl + Ca/P/Mg)'},
+    {id:'hepatico',     label:'Perfil hepático'},
+    {id:'lipidico',     label:'Perfil lipídico'},
+    {id:'ferrico',      label:'Perfil férrico'},
+    {id:'vitaminas',    label:'Vitaminas'},
+    {id:'oncologicos',  label:'Marcadores oncológicos'},
+    {id:'inmunologia',  label:'Autoinmunidad / Inmunoglobulinas'},
+    {id:'serologia',    label:'Serología (solo se listan si dan reactivo)'},
+    {id:'acidobase',    label:'Estado ácido-base'},
+    {id:'liquidos_puncion', label:'Líquidos de punción'},
+    {id:'uroanalisis', label:'Uroanálisis / Urocultivo'},
+  ];
+
+  const LABO_LIQUIDOS_STUDIES = [
+    {
+      id:'ascitico',
+      headerParts:[/l[ií]quidos?\s+de\s+punci[oó]n/i, /fisicoqu[ií]mico\s+de\s+l[ií]q\.?\s*asc[ií]tico/i],
+      label:'LIQUIDOS DE PUNCION - FISICOQUIMICO DE LIQ. ASCITICO',
+    },
+  ];
+
+  const LABO_LIQUIDOS_FIELDS = [
+    {code:null,              key:'aspecto', label:'Aspecto (post-centrifugado)', kind:'liqtext',
+      afterHeaderParts:[/post\s*-?\s*centrifugado/i, /\baspecto\b/i]},
+    {code:'GLU',             key:'glu',     label:'GLU',        kind:'liqstd', aliases:[/\bglucosa\b/i], range:{low:60, high:100}},
+    {code:'Prot T',          key:'protT',   label:'Prot T',     kind:'liqstd', aliases:[/\bprotein[ai]s?\s+totales\b/i]},
+    {code:'Amilasa',         key:'amilasa', label:'Amilasa',    kind:'liqstd', aliases:[/\bamilasa\b/i], range:{low:0, high:100}},
+    {code:'LDH',             key:'ldh',     label:'LDH',        kind:'liqstd', aliases:[/\bldh\b/i, /\blactato deshidrogenasa\b/i], range:{low:0, high:250}},
+    {code:'Bilirrubina',     key:'bili',    label:'Bilirrubina',kind:'liqstd', aliases:[/\bbilirrubina\b/i], range:{low:0, high:0.6}},
+    {code:'ALB',             key:'alb',     label:'ALB',        kind:'liqstd', aliases:[/\balb[uú]mina\b/i]},
+    {code:'Rto. de Leucocitos', key:'leuco', label:'Rto. de Leucocitos', kind:'liqleuco', aliases:[/\brto\.?\s*de\s*leucocitos\b/i], range:{low:0, high:500}},
+    {code:'Rto de Hematíes',    key:'hema',  label:'Rto de Hematíes',    kind:'liqhema',  aliases:[/\brto\.?\s*de\s*hemat[ií]es\b/i]},
+  ];
+  function laboLiqEnabledKey(study, field){ return 'liquidos_puncion|' + study.id + '|' + field.key; }
+
+  const LABO_TEXT_SEARCH_WINDOW = 260;
+
+  const LABO_TEXT_STUDIES = [
+    {
+      id:'uroanalisis',
+      headerParts:[/UROAN[AÁ]LISIS/i, /ORINA\s+COMPLETA/i],
+      chunks:[
+        {
+          id:'orina_fq', boldLabel:'Uroanálisis', subheaderRe:null,
+          fields:[
+            {marker:/\bEx[aá]men\s+Fisicoqu[ií]mico\b/i},
+            {key:'color',     out:'color', mode:'core', labelRe:/\bcolor\b/i, noColon:true, lowercase:true},
+            {key:'aspecto',   out:null,    mode:'aspectoQual', labelRe:/\baspecto\b/i, lowercase:true},
+            {key:'densidad',  out:'δ',     mode:'core', labelRe:/\bdensidad\b/i},
+            {key:'ph',        out:'pH',    mode:'core', labelRe:/\bph\b/i},
+            {key:'proteinas', out:'Prot', mode:'cond', cross:true, labelRe:/\bprote[ií]nas\b/i},
+            {key:'glucosa',   out:'GLU', mode:'cond', labelRe:/\bglucosa\b/i},
+            {key:'cetonas',   out:'Cetonas', mode:'cond', cross:true, labelRe:/\bcetonas\b/i},
+            {key:'pigbil',    out:'Pigmentos biliares', mode:'cond', labelRe:/\bpigmentos\s+biliares\b/i},
+            {key:'hb',        out:'Hb', mode:'cond', labelRe:/\bhemoglobina\b/i},
+            {key:'nitritos',  out:'Nitritos', mode:'cond', labelRe:/\bnitritos\b/i},
+            {key:'urobil',    out:'Urobilinógeno', mode:'condPlain', labelRe:/\burobilin[oó]geno\b/i},
+            {key:'esterasa',  out:'Esterasa leucocitaria', mode:'condPlain', labelRe:/\besterasa\s+leucocitaria\b/i},
+          ]
+        },
+        {
+          id:'sedimento', boldLabel:'Sedimento Urinario',
+          fields:[
+            {marker:/\bsedimento\s+urinario\b/i},
+            {key:'cel_epit', out:'Células epiteliales', mode:'condPlain', labelRe:/\bc[eé]lulas\s+epiteliales\b/i},
+            {key:'hematies', out:'Hematíes', mode:'condPlain', labelRe:/\bhemat[ií]es\b/i},
+            {key:'leucos',   out:'leucocitos', mode:'condPlain', labelRe:/\bleucocitos\b/i},
+            {key:'cilindros',out:'Cilindros', mode:'cond', labelRe:/\bcilindros\b/i},
+            {key:'cristales',out:'Cristales', mode:'cond', labelRe:/\bcristales\b/i},
+            {key:'mucus_s',  out:'Mucus', mode:'condPlain', labelRe:/\bmucus\b/i},
+          ]
+        }
+      ]
+    },
+    {
+      id:'urocultivo',
+      headerParts:[/MICROBIOLOG[IÍ]A/i, /UROCULTIVO/i],
+      chunks:[
+        {
+          id:'urocultivo_fq', boldLabel:'MICROBIOLOGIA - UROCULTIVO',
+          fields:[
+            {key:'tipo_muestra', out:null, mode:'core', labelRe:/\btipo\s+de\s+muestra\b/i},
+            {marker:/\bEXAMEN\s+FISICO-?\s*QUIMICO\b/i},
+            {key:'color2',    out:'color', mode:'core', labelRe:/\bcolor\b/i, noColon:true, lowercase:true},
+            {key:'aspecto2',  out:null,    mode:'aspectoQual', labelRe:/\baspecto\b/i, lowercase:true},
+            {key:'densidad2', out:'δ',     mode:'core', labelRe:/\bdensidad\b/i},
+            {key:'ph2',       out:'pH',    mode:'core', labelRe:/\bph\b/i},
+            {key:'prot2',     out:'Prot', mode:'cond', labelRe:/\bprote[ií]nas\b/i},
+            {key:'glu2',      out:'GLU', mode:'cond', labelRe:/\bglucosa\b/i},
+            {key:'cet2',      out:'Cetonas', mode:'cond', labelRe:/\bcetonas\b/i},
+            {key:'bili2',     out:'Bilirrubina', mode:'cond', labelRe:/\bbilirrubina\b/i},
+            {key:'hb2',       out:'Hb', mode:'cond', labelRe:/\bhemoglobina\b/i},
+            {key:'nitritos2', out:'Nitritos', mode:'cond', labelRe:/\bnitritos\b/i},
+            {key:'urobil2',   out:'Urobilinogeno', mode:'condPlain', labelRe:/\burobilin[oó]geno\b/i},
+            {key:'esterasa2', out:'Esterasa', mode:'cond', labelRe:/\besterasa\b/i},
+          ]
+        },
+        {
+          id:'micro', boldLabel:'EXAMEN MICROSCÓPICO',
+          fields:[
+            {marker:/\bEXAMEN\s+MICROSC[OÓ]PICO\b/i},
+            {key:'celulas',      out:'Células', mode:'condPlain', labelRe:/\bc[eé]lulas\b/i},
+            {key:'cel_redondas', out:'Células redondas', mode:'cond', labelRe:/\bc[eé]lulas\s+redondas\b/i},
+            {key:'hematies2',    out:'Hematíes', mode:'cond', labelRe:/\bhemat[ií]es\b/i},
+            {key:'leucos2',      out:'Leucocitos', mode:'condPlain', labelRe:/\bleucocitos\b/i},
+            {key:'germenes',     out:'Gérmenes', mode:'condPlain', labelRe:/\bg[eé]rmenes\b/i},
+            {key:'levaduras',    out:'Levaduras', mode:'condPlain', labelRe:/\blevaduras\b/i},
+            {key:'cristales2',   out:'Cristales', mode:'cond', labelRe:/\bcristales\b/i},
+            {key:'cilindros2',   out:'Cilindros', mode:'cond', labelRe:/\bcilindros\b/i},
+            {key:'mucus_m',      out:'Mucus', mode:'cond', labelRe:/\bmucus\b/i},
+          ]
+        },
+        {
+          id:'cultivo', boldLabel:'CULTIVO',
+          fields:[
+            {marker:/\bCULTIVO\b/i},
+            {key:'resultado', out:'Resultado', mode:'core', labelRe:/\bresultado\b/i},
+          ]
+        }
+      ]
+    }
+  ];
+  const TEXT_STUDY_ALIAS_ALL = LABO_TEXT_STUDIES.flatMap(s=>s.chunks.flatMap(c=>c.fields.filter(f=>f.labelRe).map(f=>f.labelRe)));
+  const LABO_TEXT_GLOBAL_STOPS = LABO_TEXT_STUDIES.flatMap(s=>
+    [s.headerParts[0]].concat(s.chunks.flatMap(c=>c.fields.filter(f=>f.marker).map(f=>f.marker)))
+  );
+
+  const EXTRA_STOPWORD_SUBSTR = [
+    'metodo','ifcc','segun','formula','calculado','chabrol','charonnat',
+    'enzimatico','punto final','tptz','desproteinizacion','quimioluminiscencia',
+    'inmunoturbidimetrico','colesteron','oxidasa','esterasa','peroxidasa',
+    'polimer','polianion','hexoquinasa','ureasa','picrato','alc-cinetico',
+    'estandarizado','hplc','westergreen','arsenazo','phosphomolybdate',
+    'xilidil','cresilo','bromocresol','electrodo','ion selectivo',
+    'sysmex','contador hematologico','ise indirecto','directa',
+    'limite superior','ideal','deseable','aceptable','muy alto','alto riesgo',
+    'bajo','nivel no diabetico','diabetico','estadio','confirmado por',
+    'inadecuado','multiplicar','raza negra','bmi','indice de riesgo','riesgo',
+    'frotis','biuret','tampon amp','pnpp','dpd','sampson','gamma glutamil',
+  ];
+
+  function laboFmtNumber(n){
+    if(n==null) return null;
+    let s = String(n);
+    if(s.indexOf('.') !== -1){
+      s = s.replace(/0+$/,'').replace(/\.$/,'');
+    }
+    return s;
+  }
+  function laboFmtMiles(n){
+    const abs = Math.round(n*1000);
+    return abs.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
+  function laboNormText(s){
+    return s.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/\s+/g,' ').trim();
+  }
+  function laboFindNumberAfter(text, startPos, maxWindow){
+    const win = text.slice(startPos, startPos+maxWindow);
+    const m = win.match(/(-?\d+(?:[.,]\d+)?)/);
+    if(!m) return null;
+    const before = win.slice(0, m.index).toLowerCase();
+    if(/no se realiza|no se efectua|no reactivo|no aplica|pendiente|no corresponde/.test(before)) return null;
+    return {value: laboToNumber(m[1]), endPos: startPos + m.index + m[0].length};
+  }
+  function laboFindPctAfter(text, startPos, maxWindow){
+    const win = text.slice(startPos, startPos+maxWindow);
+    const m = win.match(/(-?\d+(?:[.,]\d+)?)\s*%/);
+    if(!m) return null;
+    return {value: laboToNumber(m[1]), endPos: startPos + m.index + m[0].length};
+  }
+  function laboFindRangeAfter(text, startPos, maxWindow, sex){
+    const win = text.slice(startPos, startPos+maxWindow);
+    const hasGenderSplit = /\bhombre\b/i.test(win) && /\bmujer\b/i.test(win);
+    if(!hasGenderSplit && !laboLooksLikeRange(win)) return null;
+    return laboParseRange(win, sex);
+  }
+  function laboExtractStd(flat, param, sex){
+    for(const rx of param.aliases){
+      const re = new RegExp(rx.source, rx.flags.replace('g','')+'g');
+      let m;
+      while((m = re.exec(flat)) !== null){
+        const numRes = laboFindNumberAfter(flat, m.index+m[0].length, 40);
+        if(numRes && numRes.value!=null){
+          const range = laboFindRangeAfter(flat, numRes.endPos, 90, sex);
+          return {value:numRes.value, range, pos:m.index};
+        }
+        if(re.lastIndex === m.index) re.lastIndex++;
+      }
+    }
+    return null;
+  }
+  function laboExtractPct(flat, param){
+    for(const rx of param.aliases){
+      const re = new RegExp(rx.source, rx.flags.replace('g','')+'g');
+      let m;
+      while((m = re.exec(flat)) !== null){
+        const r = laboFindPctAfter(flat, m.index+m[0].length, 40);
+        if(r && r.value!=null) return {value:r.value, pos:m.index};
+        if(re.lastIndex === m.index) re.lastIndex++;
+      }
+    }
+    return null;
+  }
+  function laboExtractQual(flat, param){
+    for(const rx of param.aliases){
+      const re = new RegExp(rx.source, rx.flags.replace('g','')+'g');
+      let m;
+      while((m = re.exec(flat)) !== null){
+        const win = flat.slice(m.index+m[0].length, m.index+m[0].length+60).toLowerCase();
+        if(/\bno\s+reactivo/.test(win)) return null;
+        if(/\breactivo\b/.test(win) || /\bpositivo\b/.test(win)){
+          return {pos:m.index, value:'Reactivo'};
+        }
+        if(re.lastIndex === m.index) re.lastIndex++;
+      }
+    }
+    return null;
+  }
+
+  function laboFindSeqIndex(flat, parts, fromIdx){
+    let pos = fromIdx || 0;
+    for(const rx of parts){
+      const re = new RegExp(rx.source, rx.flags.replace('g','')+'g');
+      re.lastIndex = pos;
+      const m = re.exec(flat);
+      if(!m) return null;
+      pos = m.index + m[0].length;
+    }
+    return pos;
+  }
+  function laboFindWordAfter(flat, startPos, maxWindow){
+    const win = flat.slice(startPos, startPos+maxWindow);
+    const m = win.match(/^\s*([A-Za-zÁÉÍÓÚÑáéíóúñ][A-Za-zÁÉÍÓÚÑáéíóúñ]*(?:\s+(?:se|no|obs\.?|observ[oó]a?n?)\b)*)/i);
+    if(!m || !m[1]) return null;
+    const value = m[1].trim().replace(/\.+$/,'');
+    if(value==='') return null;
+    return {value, endPos: startPos + m.index + m[0].length};
+  }
+  function laboExtractLiqAspecto(flat, field, sectionIdx){
+    const idx = laboFindSeqIndex(flat, field.afterHeaderParts, sectionIdx);
+    if(idx==null) return null;
+    const w = laboFindWordAfter(flat, idx, 40);
+    if(!w) return null;
+    const abnormal = !/^(l[ií]mpido|claro|incoloro)\b/i.test(w.value.trim());
+    return {value:w.value, pos:idx, abnormal};
+  }
+  function laboExtractLiqStd(flat, field, sectionIdx){
+    for(const rx of field.aliases){
+      const re = new RegExp(rx.source, rx.flags.replace('g','')+'g');
+      re.lastIndex = sectionIdx;
+      const m = re.exec(flat);
+      if(!m) continue;
+      const numRes = laboFindNumberAfter(flat, m.index+m[0].length, 40);
+      if(numRes && numRes.value!=null){
+        const abnormal = field.range ? laboIsAbnormal(numRes.value, field.range) : false;
+        return {value: laboFmtNumber(numRes.value), pos:m.index, abnormal};
+      }
+    }
+    return null;
+  }
+  function laboExtractLiqLeuco(flat, field, sectionIdx){
+    for(const rx of field.aliases){
+      const re = new RegExp(rx.source, rx.flags.replace('g','')+'g');
+      re.lastIndex = sectionIdx;
+      const m = re.exec(flat);
+      if(!m) continue;
+      const numRes = laboFindNumberAfter(flat, m.index+m[0].length, 40);
+      if(!numRes || numRes.value==null) continue;
+      let text = laboFmtNumber(numRes.value);
+      const unitWin = flat.slice(numRes.endPos, numRes.endPos+15);
+      if(/^\s*\/?\s*mm[³3]/i.test(unitWin)) text += ' /mm³';
+      const predWin = flat.slice(numRes.endPos, numRes.endPos+150);
+      const predM = predWin.match(/predominio\s*(\d+(?:[.,]\d+)?)\s*%\s*([a-záéíóúñ]+)/i);
+      if(predM){
+        const pct = laboFmtNumber(laboToNumber(predM[1]));
+        let tipo = predM[2].toLowerCase();
+        if(/polimorfonuclear/.test(tipo)) tipo = 'PMN';
+        else if(/mononuclear/.test(tipo)) tipo = 'MN';
+        else tipo = predM[2];
+        text += ` (Predominio ${pct}% ${tipo})`;
+      }
+      const abnormal = field.range ? laboIsAbnormal(numRes.value, field.range) : false;
+      return {value:text, pos:m.index, abnormal};
+    }
+    return null;
+  }
+  function laboExtractLiqHema(flat, field, sectionIdx){
+    for(const rx of field.aliases){
+      const re = new RegExp(rx.source, rx.flags.replace('g','')+'g');
+      re.lastIndex = sectionIdx;
+      const m = re.exec(flat);
+      if(!m) continue;
+      const win = flat.slice(m.index+m[0].length, m.index+m[0].length+40);
+      if(/^\s*no\s+se\s+obs/i.test(win)) return {value:'no se obs', pos:m.index, abnormal:false};
+      const numRes = laboFindNumberAfter(flat, m.index+m[0].length, 40);
+      if(numRes && numRes.value!=null) return {value: laboFmtNumber(numRes.value), pos:m.index, abnormal:true};
+    }
+    return null;
+  }
+  function laboBuildLiquidosBlocks(flat){
+    const blocks = [];
+    LABO_LIQUIDOS_STUDIES.forEach(study=>{
+      const sectionIdx = laboFindSeqIndex(flat, study.headerParts, 0);
+      if(sectionIdx==null) return;
+      const itemsHtml = [];
+      LABO_LIQUIDOS_FIELDS.forEach(field=>{
+        const k = laboLiqEnabledKey(study, field);
+        if(!(laboEnabled[k] ?? true)) return;
+        let r = null;
+        if(field.kind==='liqtext') r = laboExtractLiqAspecto(flat, field, sectionIdx);
+        else if(field.kind==='liqleuco') r = laboExtractLiqLeuco(flat, field, sectionIdx);
+        else if(field.kind==='liqhema') r = laboExtractLiqHema(flat, field, sectionIdx);
+        else r = laboExtractLiqStd(flat, field, sectionIdx);
+        if(r && r.value!=null && r.value!==''){
+          const txt = field.code ? `${field.code}: ${r.value}` : r.value;
+          itemsHtml.push(r.abnormal ? `<span style="color:#C0392B;font-weight:700;">${txt}</span>` : txt);
+        }
+      });
+      if(itemsHtml.length>0) blocks.push(`${study.label}: ${itemsHtml.join(', ')}`);
+    });
+    return blocks;
+  }
+
+  function laboFindAscLiqAlbumina(flat){
+    const study = LABO_LIQUIDOS_STUDIES.find(s=>s.id==='ascitico');
+    if(!study) return null;
+    const sectionIdx = laboFindSeqIndex(flat, study.headerParts, 0);
+    if(sectionIdx==null) return null;
+    const albField = LABO_LIQUIDOS_FIELDS.find(f=>f.key==='alb');
+    if(!albField) return null;
+    const r = laboExtractLiqStd(flat, albField, sectionIdx);
+    if(!r || r.value==null || r.value==='') return null;
+    return laboToNumber(r.value);
+  }
+  function laboFindSerumAlbumina(flatPlasma){
+    const param = LABO_MASTER.find(p=>p.code==='ALB');
+    if(!param) return null;
+    const sex = laboDetectSex(flatPlasma);
+    const r = laboExtractStd(flatPlasma, param, sex);
+    if(!r || r.value==null) return null;
+    return r.value;
+  }
+  function laboBuildGasaBlock(ascAlb, serumAlb){
+    const gasa = Math.round((serumAlb - ascAlb) * 100) / 100;
+    const esHTP = gasa >= 1.1;
+    const gasaTxtRaw = `${laboFmtNumber(gasa)} g/dL`;
+    const gasaTxt = `<span style="color:#C0392B;font-weight:700;">${gasaTxtRaw}</span>`;
+    const interp = esHTP
+      ? 'GASA ≥ 1.1 g/dL: indica hipertensión portal (sensibilidad aproximada 97%). La causa más frecuente es la cirrosis hepática; también se ve en insuficiencia cardíaca congestiva, hepatitis alcohólica, síndrome de Budd-Chiari, trombosis de la vena porta, metástasis hepáticas masivas y mixedema. Si además las proteínas totales del líquido son ≥2,5 g/dL orienta a causa cardíaca; si son &lt;2,5 g/dL orienta a cirrosis.'
+      : 'GASA &lt; 1.1 g/dL: sugiere causas no relacionadas con hipertensión portal, como carcinomatosis peritoneal, tuberculosis peritoneal, pancreatitis, síndrome nefrótico, serositis por enfermedades del tejido conectivo, u obstrucción/infarto intestinal.';
+    return `<b>GASA (gradiente de albúmina sero-ascítico)</b>: ${gasaTxt} `
+      + `(albúmina sérica ${laboFmtNumber(serumAlb)} g/dL − albúmina en líquido ascítico ${laboFmtNumber(ascAlb)} g/dL). ${interp}`;
+  }
+
+  function laboScanTextStudy(flat, study, globalStops){
+    const startRe = new RegExp(study.headerParts[0].source, study.headerParts[0].flags.replace('g','')+'g');
+    const mStart = startRe.exec(flat);
+    if(!mStart) return null;
+    const startPos = laboFindSeqIndex(flat, study.headerParts, 0);
+    if(startPos==null) return null;
+
+    let cursor = startPos;
+    let lastPos = startPos;
+    const byChunk = study.chunks.map(()=>[]);
+
+    study.chunks.forEach((chunk, ci)=>{
+      const items = chunk.fields;
+      let orientationDecided = false;
+      let reversed = false;
+      let prevEnd = cursor;
+
+      for(let idx=0; idx<items.length; idx++){
+        const item = items[idx];
+        const itemRe = item.marker || item.labelRe;
+        const re = new RegExp(itemRe.source, itemRe.flags.replace('g','')+'g');
+        const win = flat.slice(cursor, cursor+LABO_TEXT_SEARCH_WINDOW);
+        const m = re.exec(win);
+        if(!m) continue;
+        const labelStart = cursor + m.index;
+        const labelEnd = labelStart + m[0].length;
+
+        if(item.marker){
+          cursor = labelEnd;
+          prevEnd = labelEnd;
+          lastPos = Math.max(lastPos, labelEnd);
+          continue;
+        }
+
+        if(!orientationDecided){
+          reversed = (labelStart - prevEnd) > 3;
+          orientationDecided = true;
+        }
+
+        let valStart, valEnd;
+        if(reversed){
+          valStart = prevEnd;
+          valEnd = labelStart;
+        } else {
+          valStart = labelEnd;
+          let nextStart = null;
+          for(let j=idx+1;j<items.length && nextStart==null;j++){
+            const nxt = items[j];
+            const nxtRe = nxt.marker || nxt.labelRe;
+            const nre = new RegExp(nxtRe.source, nxtRe.flags.replace('g','')+'g');
+            const winN = flat.slice(valStart, valStart+LABO_TEXT_SEARCH_WINDOW);
+            const mN = nre.exec(winN);
+            if(mN) nextStart = valStart + mN.index;
+          }
+          if(nextStart==null && globalStops){
+            for(const gre of globalStops){
+              const re3 = new RegExp(gre.source, gre.flags.replace('g','')+'g');
+              const win3 = flat.slice(valStart, valStart+300);
+              const m3 = re3.exec(win3);
+              if(m3){
+                const cand = valStart + m3.index;
+                if(nextStart==null || cand < nextStart) nextStart = cand;
+              }
+            }
+          }
+          valEnd = nextStart!=null ? nextStart : Math.min(flat.length, valStart+45);
+        }
+
+        let valueText = flat.slice(valStart, valEnd);
+        const finalM = valueText.match(/\bfinal\b/i);
+        if(finalM) valueText = valueText.slice(0, finalM.index);
+        valueText = valueText.replace(/\s+/g,' ').trim();
+        if(valueText!==''){
+          byChunk[ci].push({field:item, value:valueText, pos:labelStart});
+          lastPos = Math.max(lastPos, reversed ? labelEnd : valEnd);
+        }
+
+        cursor = labelEnd;
+        prevEnd = labelEnd;
+      }
+    });
+
+    return {byChunk, maskStart: mStart.index, maskEnd: Math.max(lastPos, startPos+20)};
+  }
+
+  function laboIsNormalText(v){
+    const s = v.trim().toLowerCase().replace(/\s+/g,' ');
+    if(/no\s+se\s+observan?\b/.test(s)) return true;
+    if(/^normal$/.test(s)) return true;
+    if(/no\s+contiene/.test(s)) return true;
+    if(/negativo/.test(s)) return true;
+    if(/^0\s*(?:a|-)\s*1\s*\/?\s*campo$/.test(s)) return true;
+    return false;
+  }
+  function laboSentenceCase(s){
+    const t = s.trim();
+    if(!t) return t;
+    return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+  }
+  function laboFixSpacedRange(s){
+    return s.replace(/(\d)\s*a\s*(\d)/gi, '$1 a $2');
+  }
+  function laboClassifyTextField(field, rawValue, fullMode){
+    if(field.mode==='core'){
+      let v = laboFixSpacedRange(rawValue);
+      if(field.lowercase) v = v.toLowerCase();
+      return {text:v, abnormal:false, core:true, show:true};
+    }
+    if(field.mode==='aspectoQual'){
+      let v = laboFixSpacedRange(rawValue);
+      if(field.lowercase) v = v.toLowerCase();
+      v = v.replace(/^limpido\b/i, 'límpido');
+      const abnormal = !/^(l[ií]mpido|claro|incoloro)\b/i.test(v.trim());
+      return {text:v, abnormal, core:true, show:true};
+    }
+    if(field.mode==='cond' || field.mode==='condPlain'){
+      const raw = laboFixSpacedRange(rawValue);
+      if(field.cross){
+        const isDefault = /no\s+contiene|negativo/i.test(raw);
+        if(!isDefault){
+          const plus = raw.match(/\++/);
+          const num = !plus && raw.match(/-?\d+(?:[.,]\d+)?/);
+          const val = plus ? plus[0] : (num ? num[0].replace(',', '.') : null);
+          if(val!=null) return {text:val, abnormal:true, core:false, show:true};
+        }
+      }
+      const normal = laboIsNormalText(raw);
+      const text = laboSentenceCase(raw);
+      if(normal) return {text, abnormal:false, core:false, show: !!fullMode};
+      const colorRed = field.mode==='cond';
+      return {text, abnormal:colorRed, core:false, show:true};
+    }
+    return null;
+  }
+  function laboTextEnabledKey(study, chunk, field){ return 'uroanalisis|' + study.id + '|' + chunk.id + '|' + field.key; }
+
+  function laboBuildTextStudyBlocks(flat, fullMode){
+    const blocks = [];
+    const ranges = [];
+    LABO_TEXT_STUDIES.forEach(study=>{
+      const scan = laboScanTextStudy(flat, study, LABO_TEXT_GLOBAL_STOPS);
+      if(!scan) return;
+      ranges.push({start:scan.maskStart, end:scan.maskEnd});
+      const chunkTexts = [];
+      study.chunks.forEach((chunk, ci)=>{
+        const entries = scan.byChunk[ci];
+        if(!entries || entries.length===0) return;
+        const coreParts = [];
+        const condParts = [];
+        let hasCoreField = false;
+        let anyCondFound = false;
+        entries.forEach(e=>{
+          const k = laboTextEnabledKey(study, chunk, e.field);
+          if(!(laboEnabled[k] ?? true)) return;
+          const cls = laboClassifyTextField(e.field, e.value, fullMode);
+          if(!cls) return;
+          const txt = e.field.out ? (e.field.noColon ? `${e.field.out} ${cls.text}` : `${e.field.out}: ${cls.text}`) : cls.text;
+          const html = cls.abnormal ? `<span style="color:#C0392B;font-weight:700;">${txt}</span>` : txt;
+          if(cls.core){
+            hasCoreField = true;
+            coreParts.push(html);
+          } else {
+            anyCondFound = true;
+            if(cls.show) condParts.push(html);
+          }
+        });
+        let chunkText = null;
+        if(hasCoreField){
+          const parts = coreParts.concat(condParts);
+          if(parts.length>0) chunkText = `<b>${chunk.boldLabel}</b>: ${parts.join(', ')}.`;
+        } else if(anyCondFound){
+          chunkText = condParts.length>0
+            ? `<b>${chunk.boldLabel}</b>: ${condParts.join(', ')}.`
+            : `<b>${chunk.boldLabel}</b>: sin alteraciones.`;
+        }
+        if(chunkText) chunkTexts.push(chunkText);
+      });
+      if(chunkTexts.length>0) blocks.push(chunkTexts.join('<br>'));
+    });
+    return {blocks, ranges};
+  }
+
+  const LABO_ENABLED_KEY = 'labo_conversor_enabled_v1';
+  let laboEnabled = {};
+  function laboEnabledKey(param){ return param.cat + '|' + param.code; }
+  function laboLoadEnabled(){
+    let saved = {};
+    try{ saved = JSON.parse(localStorage.getItem(LABO_ENABLED_KEY) || '{}'); }catch(e){ saved = {}; }
+    LABO_MASTER.forEach(p=>{
+      const k = laboEnabledKey(p);
+      laboEnabled[k] = (k in saved) ? !!saved[k] : true;
+    });
+    LABO_LIQUIDOS_STUDIES.forEach(study=>{
+      LABO_LIQUIDOS_FIELDS.forEach(field=>{
+        const k = laboLiqEnabledKey(study, field);
+        laboEnabled[k] = (k in saved) ? !!saved[k] : true;
+      });
+    });
+    LABO_TEXT_STUDIES.forEach(study=>{
+      study.chunks.forEach(chunk=>{
+        chunk.fields.filter(field=>field.labelRe).forEach(field=>{
+          const k = laboTextEnabledKey(study, chunk, field);
+          laboEnabled[k] = (k in saved) ? !!saved[k] : true;
+        });
+      });
+    });
+  }
+  function laboSaveEnabled(){
+    try{ localStorage.setItem(LABO_ENABLED_KEY, JSON.stringify(laboEnabled)); }catch(e){}
+  }
+  function laboBuildChecklist(){
+    $checklistGrid.innerHTML = '';
+    LABO_CATS.forEach(cat=>{
+      const group = document.createElement('div');
+      group.className = 'catgroup';
+      const h4 = document.createElement('h4');
+      h4.textContent = cat.label;
+      group.appendChild(h4);
+      if(cat.id === 'liquidos_puncion'){
+        LABO_LIQUIDOS_STUDIES.forEach(study=>{
+          LABO_LIQUIDOS_FIELDS.forEach(field=>{
+            const k = laboLiqEnabledKey(study, field);
+            const label = document.createElement('label');
+            const chk = document.createElement('input');
+            chk.type = 'checkbox';
+            chk.checked = !!laboEnabled[k];
+            chk.addEventListener('change', ()=>{
+              laboEnabled[k] = chk.checked;
+              laboSaveEnabled();
+              laboProcesar();
+            });
+            label.appendChild(chk);
+            label.appendChild(document.createTextNode(field.label));
+            group.appendChild(label);
+          });
+        });
+      } else if(cat.id === 'uroanalisis'){
+        LABO_TEXT_STUDIES.forEach(study=>{
+          study.chunks.forEach(chunk=>{
+            chunk.fields.filter(field=>field.labelRe).forEach(field=>{
+              const k = laboTextEnabledKey(study, chunk, field);
+              const label = document.createElement('label');
+              const chk = document.createElement('input');
+              chk.type = 'checkbox';
+              chk.checked = !!laboEnabled[k];
+              chk.addEventListener('change', ()=>{
+                laboEnabled[k] = chk.checked;
+                laboSaveEnabled();
+                laboProcesar();
+              });
+              label.appendChild(chk);
+              label.appendChild(document.createTextNode(`${chunk.boldLabel} – ${field.out || field.key}`));
+              group.appendChild(label);
+            });
+          });
+        });
+      } else {
+        LABO_MASTER.filter(p=>p.cat===cat.id).forEach(p=>{
+          const k = laboEnabledKey(p);
+          const label = document.createElement('label');
+          const chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.checked = !!laboEnabled[k];
+          chk.addEventListener('change', ()=>{
+            laboEnabled[k] = chk.checked;
+            laboSaveEnabled();
+            laboProcesar();
+          });
+          label.appendChild(chk);
+          label.appendChild(document.createTextNode(p.code));
+          group.appendChild(label);
+        });
+      }
+      $checklistGrid.appendChild(group);
+    });
+  }
+  fld('laboMarcarTodos').addEventListener('click', ()=>{
+    LABO_MASTER.forEach(p=>{ laboEnabled[laboEnabledKey(p)] = true; });
+    LABO_LIQUIDOS_STUDIES.forEach(study=>{ LABO_LIQUIDOS_FIELDS.forEach(field=>{ laboEnabled[laboLiqEnabledKey(study, field)] = true; }); });
+    LABO_TEXT_STUDIES.forEach(study=>{ study.chunks.forEach(chunk=>{ chunk.fields.filter(field=>field.labelRe).forEach(field=>{ laboEnabled[laboTextEnabledKey(study, chunk, field)] = true; }); }); });
+    laboSaveEnabled(); laboBuildChecklist(); laboProcesar();
+  });
+  fld('laboDesmarcarTodos').addEventListener('click', ()=>{
+    LABO_MASTER.forEach(p=>{ laboEnabled[laboEnabledKey(p)] = false; });
+    LABO_LIQUIDOS_STUDIES.forEach(study=>{ LABO_LIQUIDOS_FIELDS.forEach(field=>{ laboEnabled[laboLiqEnabledKey(study, field)] = false; }); });
+    LABO_TEXT_STUDIES.forEach(study=>{ study.chunks.forEach(chunk=>{ chunk.fields.filter(field=>field.labelRe).forEach(field=>{ laboEnabled[laboTextEnabledKey(study, chunk, field)] = false; }); }); });
+    laboSaveEnabled(); laboBuildChecklist(); laboProcesar();
+  });
+
+  const LABO_EXPLAIN = {
+    'GB':   {alto:'leucocitosis; valorar proceso infeccioso o inflamatorio agudo', bajo:'leucopenia; valorar riesgo infeccioso y considerar aislamiento si es severa'},
+    'N':    {alto:'neutrofilia; orienta a proceso infeccioso bacteriano o inflamatorio'},
+    'L':    {alto:'linfocitosis; considerar etiología viral', bajo:'linfopenia'},
+    'GR':   {bajo:'descenso de glóbulos rojos, acompaña a la anemia'},
+    'PLAQ': {bajo:'plaquetopenia; evaluar riesgo de sangrado, revisar fármacos y considerar frotis de sangre periférica', alto:'trombocitosis; evaluar causa reactiva vs. mieloproliferativa'},
+    'GLUC': {bajo:'hipoglucemia; controlar con HGT y corregir si es sintomática', alto:'hiperglucemia; controlar con HGT y valorar esquema de insulina correctora'},
+    'Na':   {bajo:'hiponatremia; evaluar volemia y osmolaridad plasmática antes de corregir (evitar corrección demasiado rápida)', alto:'hipernatremia; evaluar aporte de agua libre'},
+    'K':    {bajo:'hipokalemia; controlar y valorar reposición de ClK (en casos moderados/severos, ej. 3 ampollas de ClK diluidas en 300 mL de SF a pasar en 3 horas —regla del 3— seguido de reposición en el plan de hidratación parenteral y/o Kaon vía oral)', alto:'hiperkalemia; solicitar ECG, considerar gluconato de calcio si hay cambios eléctricos y medidas para descender la kalemia'},
+    'CL':   {bajo:'hipocloremia', alto:'hipercloremia; considerar acidosis metabólica hiperclorémica'},
+    'Ca':   {bajo:'hipocalcemia; correlacionar con calcio iónico y albúmina, valorar reposición', alto:'hipercalcemia; evaluar causa e hidratación'},
+    'P':    {bajo:'hipofosfatemia', alto:'hiperfosfatemia'},
+    'Mg':   {bajo:'hipomagnesemia', alto:'hipermagnesemia'},
+    'GPT':  {alto:'transaminasa GPT elevada; sugiere daño hepatocelular'},
+    'GOT':  {alto:'transaminasa GOT elevada; sugiere daño hepatocelular o muscular'},
+    'FAL':  {alto:'fosfatasa alcalina elevada; sugiere patrón colestásico'},
+    'BT':   {alto:'hiperbilirrubinemia total'},
+    'BD':   {alto:'bilirrubina directa elevada; sugiere componente colestásico'},
+    'ALB':  {bajo:'hipoalbuminemia; valorar estado nutricional y pérdidas'},
+    'Prot T': {bajo:'hipoproteinemia total; valorar estado nutricional, pérdidas renales (proteinuria) o hepáticas', alto:'hiperproteinemia; considerar deshidratación o gammapatía, correlacionar con proteinograma'},
+    'No HDL': {alto:'colesterol no-HDL elevado; asociado a mayor riesgo cardiovascular, valorar perfil lipídico completo y riesgo cardiovascular global', bajo:'colesterol no-HDL muy bajo (hipocolesterolemia); en el contexto de un paciente internado suele ser marcador de desnutrición, inflamación o síndrome de respuesta inflamatoria/hepatopatía más que un hallazgo lipídico aislado; correlacionar con albúmina y proteínas totales'},
+    'CPK':  {alto:'CPK elevada; considerar daño muscular (rabdomiólisis) o isquemia miocárdica'},
+    'Troponina': {alto:'troponina elevada; correlacionar con clínica y ECG para descartar síndrome coronario agudo'},
+    'Ac Lac': {alto:'lactato elevado; considerar hipoperfusión tisular/shock'},
+    'PSA':  {alto:'PSA elevado; correlacionar clínicamente y considerar evaluación urológica'},
+  };
+  function laboRed(txt){
+    return `<span style="color:#C0392B;font-weight:700;">${txt}</span>`;
+  }
+  function laboAnemiaTipo(vcm, hcm){
+    const size = vcm==null ? '' : (vcm<80 ? 'microcítica' : (vcm>100 ? 'macrocítica' : 'normocítica'));
+    const color = hcm==null ? '' : (hcm<27 ? 'hipocrómica' : 'normocrómica');
+    return [size, color].filter(Boolean).join(' ');
+  }
+  function laboBuildExplicaciones(found){
+    const byCode = {};
+    found.forEach(f=>{ byCode[f.code] = f; });
+    const consumed = new Set();
+    const sentences = [];
+
+    const hbF = byCode['HB'], htoF = byCode['HTO'];
+    if((hbF && hbF.dir==='bajo') || (htoF && htoF.dir==='bajo')){
+      const vcmF = byCode['VCM'], hcmF = byCode['HCM'];
+      const vcm = vcmF ? laboToNumber(vcmF.text) : null;
+      const hcm = hcmF ? laboToNumber(hcmF.text) : null;
+      const tipo = laboAnemiaTipo(vcm, hcm);
+      const partes = [];
+      if(hbF) partes.push(`HB ${hbF.text}`);
+      if(htoF) partes.push(`HTO ${htoF.text}`);
+      if(vcmF) partes.push(`VCM ${vcmF.text}`);
+      if(hcmF) partes.push(`HCM ${hcmF.text}`);
+      let extra = '';
+      if(/microc[ií]tica/.test(tipo) && /hipocr[oó]mica/.test(tipo)) extra = ' Se sugiere solicitar perfil férrico para descartar ferropenia.';
+      else if(/macroc[ií]tica/.test(tipo)) extra = ' Se sugiere solicitar vitamina B12, ácido fólico y perfil tiroideo.';
+      sentences.push(`${laboRed(partes.join(', '))}: anemia${tipo?(' '+tipo):''}.${extra}`);
+      ['HB','HTO','VCM','HCM'].forEach(c=>consumed.add(c));
+    }
+
+    const ureaF = byCode['UREA'], crF = byCode['CR'], fgF = byCode['FG'];
+    if((ureaF && ureaF.dir) || (crF && crF.dir) || (fgF && fgF.dir==='bajo')){
+      const partes = [];
+      if(ureaF) partes.push(`UREA ${ureaF.text}`);
+      if(crF) partes.push(`CR ${crF.text}`);
+      if(fgF) partes.push(`FG ${fgF.text}`);
+      sentences.push(`${laboRed(partes.join(', '))}: deterioro de la función renal; ajustar dosis de fármacos de eliminación renal y correlacionar con diuresis y estado de hidratación.`);
+      ['UREA','CR','FG'].forEach(c=>consumed.add(c));
+    }
+
+    const feF = byCode['Fe'], transfF = byCode['transferrina'], satF = byCode['Sat Transf'],
+          tibcF = byCode['TIBC'], uibcF = byCode['UIBC'], ferrF = byCode['ferritina'];
+    if([feF,transfF,satF,tibcF,uibcF,ferrF].some(f=>f && f.dir)){
+      const partes = [];
+      if(feF) partes.push(`Fe ${feF.text}`);
+      if(transfF) partes.push(`transferrina ${transfF.text}`);
+      if(satF) partes.push(`Sat Transf ${satF.text}`);
+      if(tibcF) partes.push(`TIBC ${tibcF.text}`);
+      if(uibcF) partes.push(`UIBC ${uibcF.text}`);
+      if(ferrF) partes.push(`ferritina ${ferrF.text}`);
+
+      const patronInflamatorio = ferrF && ferrF.dir==='alto' &&
+        ((feF && feF.dir==='bajo') || (transfF && transfF.dir==='bajo') || (tibcF && tibcF.dir==='bajo'));
+      const patronFerropenico = feF && feF.dir==='bajo' &&
+        ((transfF && transfF.dir==='alto') || (tibcF && tibcF.dir==='alto')) &&
+        (!satF || satF.dir==='bajo') && (!ferrF || ferrF.dir!=='alto');
+
+      let interp;
+      if(patronInflamatorio){
+        interp = 'perfil férrico compatible con anemia de trastornos crónicos/inflamación (hierro y transferrina/TIBC bajos con ferritina elevada como reactante de fase aguda); correlacionar con PCR y proceso inflamatorio o infeccioso de base, no indicar suplementación de hierro sin estudio adicional';
+      } else if(patronFerropenico){
+        interp = 'perfil férrico compatible con ferropenia (hierro bajo con transferrina/TIBC elevados y saturación baja); investigar causa de pérdida (ej. sangrado digestivo) y valorar suplementación de hierro';
+      } else {
+        const bits = [];
+        if(feF && feF.dir) bits.push(feF.dir==='bajo' ? 'hierro sérico bajo' : 'hierro sérico elevado');
+        if(transfF && transfF.dir) bits.push(transfF.dir==='bajo' ? 'transferrina baja' : 'transferrina elevada');
+        if(satF && satF.dir) bits.push(satF.dir==='bajo' ? 'saturación de transferrina baja' : 'saturación de transferrina elevada');
+        if(tibcF && tibcF.dir) bits.push(tibcF.dir==='bajo' ? 'TIBC baja' : 'TIBC elevada');
+        if(uibcF && uibcF.dir) bits.push(uibcF.dir==='bajo' ? 'UIBC baja' : 'UIBC elevada');
+        if(ferrF && ferrF.dir) bits.push(ferrF.dir==='bajo' ? 'ferritina baja (depósitos disminuidos)' : 'ferritina elevada (reactante de fase aguda o sobrecarga)');
+        interp = `alteración del metabolismo del hierro (${bits.join(', ')}); correlacionar hierro, transferrina/TIBC, saturación y ferritina en conjunto para diferenciar ferropenia de anemia de trastornos crónicos`;
+      }
+      sentences.push(`${laboRed(partes.join(', '))}: ${interp}.`);
+      ['Fe','transferrina','Sat Transf','TIBC','UIBC','ferritina'].forEach(c=>consumed.add(c));
+    }
+
+    Object.keys(LABO_EXPLAIN).forEach(code=>{
+      if(consumed.has(code)) return;
+      const f = byCode[code];
+      if(!f || !f.dir) return;
+      const txt = LABO_EXPLAIN[code][f.dir];
+      if(!txt) return;
+      sentences.push(`${laboRed(`${code} ${f.text}`)}: ${txt}.`);
+      consumed.add(code);
+    });
+
+    found.forEach(f=>{
+      if(consumed.has(f.code)) return;
+      if(f.abnormal && f.text==='Reactivo'){
+        sentences.push(`${laboRed(f.code)}: resultado reactivo; requiere confirmación con técnica complementaria y evaluación clínica.`);
+        consumed.add(f.code);
+      }
+    });
+
+    return sentences;
+  }
+
+  function laboR1(n){ return Math.round(n*10)/10; }
+  function laboWinterExpected(hco3){ return {low: laboR1(1.5*hco3+8-2), high: laboR1(1.5*hco3+8+2)}; }
+  function laboBuildAcidBase(v, opts){
+    opts = opts || {};
+    if(v.ph==null || v.pco2==null || v.hco3==null) return null;
+    const ph=v.ph, pco2=v.pco2, hco3=v.hco3;
+    const acidemia = ph<7.35, alcalemia = ph>7.45;
+    let primario, compensacion = '';
+    if(acidemia){
+      primario = (hco3<22) ? 'acidosis metabólica' : ((pco2>45) ? 'acidosis respiratoria' : 'acidemia (trastorno mixto, a definir con clínica)');
+    } else if(alcalemia){
+      primario = (hco3>26) ? 'alcalosis metabólica' : ((pco2<35) ? 'alcalosis respiratoria' : 'alcalemia (trastorno mixto, a definir con clínica)');
+    } else if(pco2>45 && hco3>26){
+      primario = opts.showMixedValues
+        ? `trastorno mixto opuesto [acidosis respiratoria (pCO2: ${laboFmtNumber(pco2)}) + alcalosis metabólica (HCO3: ${laboFmtNumber(hco3)})] con pH compensado`
+        : 'trastorno mixto opuesto (acidosis respiratoria + alcalosis metabólica) con pH compensado';
+    } else if(pco2<35 && hco3<22){
+      primario = opts.showMixedValues
+        ? `trastorno mixto opuesto [alcalosis respiratoria (pCO2: ${laboFmtNumber(pco2)}) + acidosis metabólica (HCO3: ${laboFmtNumber(hco3)})] con pH compensado`
+        : 'trastorno mixto opuesto (alcalosis respiratoria + acidosis metabólica) con pH compensado';
+    } else {
+      primario = 'equilibrio ácido-base dentro de parámetros normales';
+    }
+    if(primario==='acidosis metabólica'){
+      const exp = laboWinterExpected(hco3);
+      if(pco2 < exp.low) compensacion = `la pCO2 (${laboFmtNumber(pco2)}) está por debajo de la esperada (${laboFmtNumber(exp.low)}–${laboFmtNumber(exp.high)} mmHg, fórmula de Winter), lo que sugiere una alcalosis respiratoria sobreagregada`;
+      else if(pco2 > exp.high) compensacion = `la pCO2 (${laboFmtNumber(pco2)}) está por encima de la esperada (${laboFmtNumber(exp.low)}–${laboFmtNumber(exp.high)} mmHg, fórmula de Winter), lo que sugiere una acidosis respiratoria sobreagregada (trastorno mixto)`;
+      else compensacion = `la pCO2 (${laboFmtNumber(pco2)}) es la esperada para el grado de acidosis metabólica (${laboFmtNumber(exp.low)}–${laboFmtNumber(exp.high)} mmHg, fórmula de Winter), compatible con compensación respiratoria adecuada`;
+    } else if(primario==='alcalosis metabólica'){
+      const expPco2 = laboR1(40 + (hco3-24)*0.6);
+      compensacion = `la pCO2 esperada por compensación respiratoria es de aprox. ${laboFmtNumber(expPco2)} mmHg (ΔpCO2 = ΔHCO3 × 0.6); la pCO2 medida es ${laboFmtNumber(pco2)} mmHg`;
+    } else if(primario==='acidosis respiratoria'){
+      const dpco2 = pco2-40;
+      const expAcute = laboR1(24 + dpco2*0.1), expChronic = laboR1(24 + dpco2*0.3);
+      const fase = hco3<=expAcute+2 ? 'un componente predominantemente agudo' : (hco3>=expChronic-2 ? 'un componente crónico/corregido' : 'un cuadro parcialmente compensado (mixto)');
+      compensacion = `con ΔHCO3 = ΔpCO2 × 0.1 (aguda) el HCO3 esperado es ≈${laboFmtNumber(expAcute)} mEq/L, y con ΔHCO3 = ΔpCO2 × 0.3 (crónica/corregida) sería ≈${laboFmtNumber(expChronic)} mEq/L; el HCO3 medido (${laboFmtNumber(hco3)} mEq/L) orienta a ${fase}`;
+    } else if(primario==='alcalosis respiratoria'){
+      const dpco2 = 40-pco2;
+      const expAcute = laboR1(24 - dpco2*0.2), expChronic = laboR1(24 - dpco2*0.4);
+      compensacion = `con ΔHCO3 = ΔpCO2 × 0.2 (aguda) el HCO3 esperado es ≈${laboFmtNumber(expAcute)} mEq/L, y con ΔHCO3 = ΔpCO2 × 0.4 (crónica/corregida) sería ≈${laboFmtNumber(expChronic)} mEq/L; el HCO3 medido es ${laboFmtNumber(hco3)} mEq/L`;
+    }
+    const parts = [`Trastorno primario sugerido: <b>${primario}</b>${compensacion ? ('. Compensación: '+compensacion+'.') : '.'}`];
+
+    if(v.po2!=null){
+      let hipoxTxt = '';
+      if(v.edad!=null){
+        const esperado = laboR1(102-(0.33*v.edad));
+        hipoxTxt = `PO2 esperada para la edad [102 − (0,33 × ${v.edad} años)] ≈ ${laboFmtNumber(esperado)} mmHg; PO2 medida ${laboFmtNumber(v.po2)} mmHg`;
+        if(v.po2 < esperado-10) hipoxTxt += ', compatible con hipoxemia significativa para la edad.';
+        else if(v.po2 < esperado) hipoxTxt += ', levemente por debajo de lo esperado para la edad.';
+        else hipoxTxt += ', dentro de lo esperado para la edad.';
+      } else if(v.po2<80){
+        hipoxTxt = `PO2 ${laboFmtNumber(v.po2)} mmHg: hipoxemia.`;
+      }
+      if(v.fio2!=null && v.fio2>0){
+        const pafi = Math.round((v.po2/v.fio2)*10000)/100;
+        const clasif = pafi>300 ? 'sin criterio de injuria pulmonar' : (pafi>200 ? 'injuria pulmonar leve' : (pafi>100 ? 'compatible con SDRA moderado' : 'compatible con SDRA severo'));
+        hipoxTxt += (hipoxTxt?' ':'') + `PAFI (pO2/FiO2 × 100) = ${laboFmtNumber(pafi)}: ${clasif}.`;
+      }
+      if(hipoxTxt) parts.push(hipoxTxt);
+    }
+    return parts.join(' ');
+  }
+
+  function laboBuildEquationsList(v){
+    const f = laboFmtNumber;
+    const lines = [];
+    if(v.hco3!=null){
+      const win = laboWinterExpected(v.hco3);
+      lines.push(`Ac. Met. (Winter): pCO2 esp. = 1.5×HCO3 + 8 ± 2 = 1.5×${f(v.hco3)} + 8 ± 2 ≈ ${f(win.low)}–${f(win.high)} mmHg`);
+      const dHco3Alc = laboR1(v.hco3-24);
+      const expPco2Alc = laboR1(40 + dHco3Alc*0.6);
+      lines.push(`Alc. Met.: ΔpCO2 = ΔHCO3 × 0.6 = (${f(v.hco3)}−24) × 0.6 ≈ ${f(laboR1(dHco3Alc*0.6))} → pCO2 esp. ≈ ${f(expPco2Alc)} mmHg`);
+    }
+    if(v.pco2!=null){
+      const dAg = laboR1(v.pco2-40);
+      const expAcuteResp = laboR1(24 + dAg*0.1), expChronicResp = laboR1(24 + dAg*0.3);
+      lines.push(`Ac. Resp. aguda: ΔHCO3 = ΔpCO2 × 0.1 (corregida ×0.3) = (${f(v.pco2)}−40) × 0.1/0.3 → HCO3 esp. ≈ ${f(expAcuteResp)} mEq/L (aguda) / ≈ ${f(expChronicResp)} mEq/L (corregida)`);
+      const dAl = laboR1(40-v.pco2);
+      const expAcuteAlc = laboR1(24 - dAl*0.2), expChronicAlc = laboR1(24 - dAl*0.4);
+      lines.push(`Alc. Resp. aguda: ΔHCO3 = ΔpCO2 × 0.2 (corregida ×0.4) = (40−${f(v.pco2)}) × 0.2/0.4 → HCO3 esp. ≈ ${f(expAcuteAlc)} mEq/L (aguda) / ≈ ${f(expChronicAlc)} mEq/L (corregida)`);
+    }
+    if(v.po2!=null && v.fio2!=null && v.fio2>0){
+      const pafi = Math.round((v.po2/v.fio2)*10000)/100;
+      lines.push(`PAFI = pO2/FiO2 × 100 = ${f(v.po2)}/${f(v.fio2)} × 100 ≈ ${f(pafi)}`);
+    }
+    if(v.edad!=null){
+      const esp = laboR1(102-(0.33*v.edad));
+      const extra = v.po2!=null ? `; PO2 medida ${f(v.po2)} mmHg` : '';
+      lines.push(`PO2 esperada por edad = 102 − (0.33 × ${f(v.edad)}) ≈ ${f(esp)} mmHg${extra}`);
+    }
+    return lines;
+  }
+
+  function laboBuildGasResultHtml(v, opts){
+    const interp = laboBuildAcidBase(v, opts);
+    if(!interp) return '';
+    const eqLines = laboBuildEquationsList(v);
+    let html = interp;
+    if(eqLines.length){
+      html += `<br><br><b>Ecuaciones y datos del paciente</b>:<br>` + eqLines.map(l=>`• ${l}`).join('<br>');
+    }
+    return html;
+  }
+
+  function laboProcesar(){
+    const raw = $input.value;
+    if(!raw.trim()){
+      $output.innerHTML = '';
+      $status.textContent = 'Pegá primero el texto del laboratorio.';
+      return;
+    }
+    const flat = raw.replace(/[\t\r\n]+/g,' ').replace(/\s+/g,' ');
+
+    function laboMaskRanges(str, ranges){
+      if(!ranges.length) return str;
+      const arr = str.split('');
+      ranges.forEach(r=>{ for(let i=r.start; i<r.end && i<arr.length; i++) arr[i] = ' '; });
+      return arr.join('');
+    }
+    const liquidosRanges = LABO_LIQUIDOS_STUDIES.map(study=>{
+      const startRe = new RegExp(study.headerParts[0].source, study.headerParts[0].flags.replace('g','')+'g');
+      const mStart = startRe.exec(flat);
+      if(!mStart) return null;
+      if(laboFindSeqIndex(flat, study.headerParts, 0)==null) return null;
+      return {start:mStart.index, end:flat.length};
+    }).filter(Boolean);
+
+    const textStudyScan = LABO_TEXT_STUDIES.map(study=>laboScanTextStudy(flat, study, LABO_TEXT_GLOBAL_STOPS)).filter(Boolean);
+    const textStudyRanges = textStudyScan.map(s=>({start:s.maskStart, end:s.maskEnd}));
+
+    const flatMasked = laboMaskRanges(flat, liquidosRanges.concat(textStudyRanges));
+    const sex = laboDetectSex(flat);
+    const age = laboDetectAge(flat);
+    const fio2Match = flat.match(/\bfio2\s*:?\s*(\d+(?:[.,]\d+)?)\s*%?/i);
+    const fio2 = fio2Match ? laboToNumber(fio2Match[1]) : null;
+
+    const found = [];
+    LABO_MASTER.forEach(param=>{
+      if(!laboEnabled[laboEnabledKey(param)]) return;
+      let text = null, abnormal = false, ok = false, pos = null, dir = null;
+      if(param.kind==='pct'){
+        const r = laboExtractPct(flatMasked, param);
+        if(r && r.value!=null){ text = `${laboFmtNumber(r.value)}%`; abnormal = false; ok = true; pos = r.pos; }
+      } else if(param.kind==='plaq'){
+        const r = laboExtractStd(flatMasked, param, sex);
+        if(r){ text = laboFmtMiles(r.value); abnormal = laboIsAbnormal(r.value, r.range); dir = laboDir(r.value, r.range); ok = true; pos = r.pos; }
+      } else if(param.kind==='pctstd'){
+        const r = laboExtractStd(flatMasked, param, sex);
+        if(r){ text = `${laboFmtNumber(r.value)}%`; abnormal = laboIsAbnormal(r.value, r.range); dir = laboDir(r.value, r.range); ok = true; pos = r.pos; }
+      } else if(param.kind==='gas'){
+        const r = laboExtractStd(flatMasked, param, sex);
+        if(r){
+          text = laboFmtNumber(r.value);
+          let range = param.fixedRange;
+          if(param.code==='pO2' && age!=null){
+            const esperado = 102-0.33*age;
+            range = {low: esperado-10, high: 200};
+          }
+          abnormal = laboIsAbnormal(r.value, range);
+          dir = laboDir(r.value, range);
+          ok = true; pos = r.pos;
+        }
+      } else if(param.kind==='qual'){
+        const r = laboExtractQual(flatMasked, param);
+        if(r){ text = r.value; abnormal = true; ok = true; pos = r.pos; }
+      } else {
+        const r = laboExtractStd(flatMasked, param, sex);
+        if(r){ text = laboFmtNumber(r.value); abnormal = laboIsAbnormal(r.value, r.range); dir = laboDir(r.value, r.range); ok = true; pos = r.pos; }
+      }
+      if(ok) found.push({code:param.code, text, abnormal, l1:param.l1, l2:param.l2, pos, dir});
+    });
+
+    const CORE_ALIAS_ALL = LABO_MASTER.flatMap(p=>p.aliases).concat(LABO_LIQUIDOS_FIELDS.flatMap(f=>f.aliases||[])).concat(TEXT_STUDY_ALIAS_ALL);
+    const rawLines = raw.split(/\r?\n/);
+    const extras = [];
+    const seenNames = new Set();
+    let cursor = 0;
+    for(let i=0;i<rawLines.length;i++){
+      let candidate = rawLines[i].trim();
+      candidate = candidate.replace(/^(grafico|evolucion|item)\s*/i,'').trim();
+      const digitCut = candidate.search(/\d/);
+      if(digitCut !== -1) candidate = candidate.slice(0, digitCut).trim();
+      candidate = candidate.replace(/[\t:]+$/,'').trim();
+      if(candidate==='') continue;
+      if(!/[a-zA-Z]/.test(candidate)) continue;
+      if(candidate.length < 3) continue;
+      const norm = laboNormText(candidate);
+      if(SECTION_STOPWORDS.includes(norm)) continue;
+      if(EXTRA_STOPWORD_SUBSTR.some(w=>norm.includes(w))) continue;
+      if(/^m[eé]todo/i.test(candidate)) continue;
+      if(/\b(hombre|mujer|var[oó]n|masculino|femenino)\s*:/i.test(candidate)) continue;
+      if(laboLooksLikeRange(candidate)) continue;
+      if(laboLooksLikeUnit(candidate)) continue;
+      if(candidate === candidate.toUpperCase() && /[A-Za-zÁÉÍÓÚÑ]/.test(candidate)) continue;
+      if(CORE_ALIAS_ALL.some(rx=>rx.test(candidate))) continue;
+      if(seenNames.has(norm)) continue;
+
+      const flatCandidate = candidate.replace(/\s+/g,' ');
+      let extraPos = flatMasked.indexOf(flatCandidate, cursor);
+      if(extraPos === -1) extraPos = flatMasked.indexOf(flatCandidate);
+      if(extraPos === -1) continue;
+      const afterPos = extraPos + flatCandidate.length;
+      const numRes = laboFindNumberAfter(flatMasked, afterPos, 30);
+      if(!numRes || numRes.value==null) continue;
+      const range = laboFindRangeAfter(flatMasked, numRes.endPos, 60);
+      if(!laboIsAbnormal(numRes.value, range)) continue;
+
+      seenNames.add(norm);
+      extras.push({code:candidate, text:laboFmtNumber(numRes.value), abnormal:true, l1:true, l2:false, pos:extraPos});
+      cursor = numRes.endPos;
+    }
+
+    const byPos = (a,b)=> (a.pos ?? 0) - (b.pos ?? 0);
+    const line2Items = found.filter(f=>f.l2).sort(byPos);
+    const line1Items = found.filter(f=>f.l1 || f.abnormal).concat(extras).sort(byPos);
+
+    const liquidosBlocks = laboBuildLiquidosBlocks(flat);
+    const textStudyResult = laboBuildTextStudyBlocks(flat, laboFullMode);
+    const textStudyBlocks = textStudyResult.blocks;
+
+    const ascAlb = laboFindAscLiqAlbumina(flat);
+    let gasaBlock = null;
+    if(ascAlb!=null){
+      $gasaWrap.classList.add('show');
+      const plasmaRaw = $gasaInput.value;
+      if(plasmaRaw && plasmaRaw.trim()){
+        const flatPlasma = plasmaRaw.replace(/[\t\r\n]+/g,' ').replace(/\s+/g,' ');
+        const serumAlb = laboFindSerumAlbumina(flatPlasma);
+        if(serumAlb!=null) gasaBlock = laboBuildGasaBlock(ascAlb, serumAlb);
+      }
+    } else {
+      $gasaWrap.classList.remove('show');
+    }
+
+    if(line2Items.length===0 && line1Items.length===0 && liquidosBlocks.length===0 && textStudyBlocks.length===0){
+      $output.innerHTML = '';
+      $status.textContent = 'No se pudo reconocer ningún dato conocido en el texto pegado. Revisá el formato.';
+      return;
+    }
+
+    const fecha = laboFechaFormateada();
+    const prefix = fecha ? `${fecha}: ` : '';
+    const LABO_FONT = "font-family:Calibri,Carlito,'Segoe UI',Arial,sans-serif;font-size:12pt;color:#000;";
+
+    function buildLine(items){
+      if(items.length===0) return '';
+      const parts = items.map(r=>{
+        const txt = `${r.code}: ${r.text}`;
+        return r.abnormal
+          ? `<span style="color:#C0392B;font-weight:700;">${txt}</span>`
+          : txt;
+      });
+      return prefix + parts.join(', ') + '.';
+    }
+
+    const line2Html = buildLine(line2Items);
+    const line1Html = buildLine(line1Items.filter(x=>x.l1 || x.abnormal));
+
+    let out = '';
+    if(line2Html) out += `<span style="${LABO_FONT}"><b>LABORATORIO COMPLETO:</b><br>${line2Html}</span>`;
+    if(line2Html && line1Html) out += '<br><br>';
+    if(line1Html) out += `<span style="${LABO_FONT}"><b>LABORATORIO PARCIAL:</b><br>${line1Html}</span>`;
+    liquidosBlocks.forEach(b=>{
+      if(out) out += '<br><br>';
+      out += `<span style="${LABO_FONT}">${prefix}${b}.</span>`;
+    });
+    textStudyBlocks.forEach(b=>{
+      if(out) out += '<br><br>';
+      out += `<span style="${LABO_FONT}">${prefix}${b}</span>`;
+    });
+    if(gasaBlock){
+      if(out) out += '<br><br>';
+      out += `<span style="${LABO_FONT}">${prefix}${gasaBlock}</span>`;
+    }
+
+    const gasV = {
+      ph:   (found.find(f=>f.code==='pH')  ? laboToNumber(found.find(f=>f.code==='pH').text)  : null),
+      pco2: (found.find(f=>f.code==='pCO2')? laboToNumber(found.find(f=>f.code==='pCO2').text): null),
+      hco3: (found.find(f=>f.code==='HCO3')? laboToNumber(found.find(f=>f.code==='HCO3').text): null),
+      po2:  (found.find(f=>f.code==='pO2') ? laboToNumber(found.find(f=>f.code==='pO2').text) : null),
+      edad: age,
+      fio2: fio2,
+    };
+    const abgInterp = laboBuildAcidBase(gasV, {showMixedValues:true});
+    if(abgInterp){
+      if(out) out += '<br><br>';
+      out += `<span style="${LABO_FONT}"><b>Interpretación gasométrica</b>: ${abgInterp}</span>`;
+    }
+    if(gasV.ph!=null)  fld('gcPh').value = gasV.ph;
+    if(gasV.pco2!=null) fld('gcPco2').value = gasV.pco2;
+    if(gasV.hco3!=null) fld('gcHco3').value = gasV.hco3;
+    if(gasV.po2!=null)  fld('gcPo2').value = gasV.po2;
+    if(gasV.edad!=null) fld('gcEdad').value = gasV.edad;
+    if(gasV.fio2!=null) fld('gcFio2').value = gasV.fio2;
+
+    if(gasV.ph!=null && gasV.pco2!=null && gasV.hco3!=null){
+      $gasCalcDetails.open = true;
+      $gcResultado.innerHTML = laboBuildGasResultHtml(gasV, {showMixedValues:false});
+    }
+
+    const explicaciones = laboBuildExplicaciones(found);
+    if(explicaciones.length){
+      if(out) out += '<br><br>';
+      out += `<span style="${LABO_FONT}"><b>Explicación de alteraciones</b>: ${explicaciones.join(' ')}</span>`;
+    }
+
+    $output.innerHTML = out;
+
+    const extrasCount = extras.length;
+    const catalogAlteradosFueraCore = found.filter(f=>!f.l1 && f.abnormal).length;
+    const line1CoreCount = found.filter(f=>f.l1).length;
+    const liqTxt = liquidosBlocks.length ? ` Líquidos de punción: ${liquidosBlocks.length} estudio(s).` : '';
+    const uroTxt = textStudyBlocks.length ? ` Uroanálisis/urocultivo: ${textStudyBlocks.length} estudio(s).` : '';
+    const gasaTxt = gasaBlock ? ' GASA calculado.' : (ascAlb!=null ? ' Falta el laboratorio plasmático para calcular el GASA.' : '');
+    const abgTxt = abgInterp ? ' Se detectó y analizó el estado ácido-base (ver sección 4 para ajustar a mano).' : '';
+    $status.textContent = `Listo. Renglón completo: ${line2Items.length} dato(s). Renglón resumen: ${line1CoreCount} del listado + ${catalogAlteradosFueraCore} alterado(s) adicionales del catálogo + ${extrasCount} adicional(es) alterado(s) fuera de catálogo.${liqTxt}${uroTxt}${gasaTxt}${abgTxt}`;
+  }
+
+  const SECTION_STOPWORDS = [
+    'hematologia','hemograma','quimica','hemostasia','coagulograma',
+    'ionograma plasmatico','hepatograma','serie blanca','serie roja',
+    'serie plaquetaria','indices hematimetricos','formula leucocitaria',
+    'valor porcentual','valor absoluto','resultados','determinacion',
+    'evol','cama','unidad','valores de referencia','metodo','orden',
+    'paciente','fecha','medico','servicio','sala','sexo','edad'
+  ];
+
+  fld('laboProcesarBtn').addEventListener('click', ()=>{
+    laboFullMode = false;
+    $labCompletoBtn.classList.remove('active');
+    laboProcesar();
+  });
+  $labCompletoBtn.addEventListener('click', ()=>{
+    laboFullMode = true;
+    $labCompletoBtn.classList.add('active');
+    laboProcesar();
+  });
+  fld('laboLimpiarBtn').addEventListener('click', ()=>{
+    $input.value = '';
+    $gasaInput.value = '';
+    $gasaWrap.classList.remove('show');
+    laboFullMode = false;
+    $labCompletoBtn.classList.remove('active');
+    $output.innerHTML = '';
+    $status.textContent = '';
+    $input.focus();
+  });
+  fld('laboCopiarBtn').addEventListener('click', async ()=>{
+    if(!$output.innerHTML.trim()){
+      $status.textContent = 'No hay nada para copiar todavía.';
+      return;
+    }
+
+    const cleanHtml = `<div style="background:transparent;color:#000000;font-family:Calibri,Carlito,'Segoe UI',Arial,sans-serif;font-size:12pt;">${$output.innerHTML}</div>`;
+    const text = $output.innerText;
+
+    let copiadoConFormato = false;
+    document.documentElement.classList.add('labo-copying');
+    try{
+      const range = document.createRange();
+      range.selectNodeContents($output);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      copiadoConFormato = document.execCommand('copy');
+      sel.removeAllRanges();
+    }catch(e){
+      copiadoConFormato = false;
+    }
+    document.documentElement.classList.remove('labo-copying');
+    if(copiadoConFormato){
+      $status.textContent = 'Copiado con formato al portapapeles.';
+      return;
+    }
+
+    try{
+      const blobHtml = new Blob([cleanHtml], {type:'text/html'});
+      const blobText = new Blob([text], {type:'text/plain'});
+      const item = new ClipboardItem({'text/html': blobHtml, 'text/plain': blobText});
+      await navigator.clipboard.write([item]);
+      $status.textContent = 'Copiado con formato al portapapeles.';
+      return;
+    }catch(e){
+    }
+
+    try{
+      await navigator.clipboard.writeText(text);
+      $status.textContent = 'Copiado como texto simple (el formato con color no se pudo copiar en este navegador).';
+    }catch(e2){
+      $status.textContent = 'No se pudo copiar automáticamente. Seleccioná el texto manualmente.';
+    }
+  });
+
+  let laboAutoTimer = null;
+  function laboAutoProcesar(){
+    if(laboAutoTimer) clearTimeout(laboAutoTimer);
+    laboAutoTimer = setTimeout(()=>{
+      laboFullMode = false;
+      $labCompletoBtn.classList.remove('active');
+      laboProcesar();
+    }, 150);
+  }
+  function laboAutoProcesarGasa(){
+    if(laboAutoTimer) clearTimeout(laboAutoTimer);
+    laboAutoTimer = setTimeout(()=>{ laboProcesar(); }, 150);
+  }
+  $input.addEventListener('input', laboAutoProcesar);
+  $input.addEventListener('paste', laboAutoProcesar);
+  $gasaInput.addEventListener('input', laboAutoProcesarGasa);
+  $gasaInput.addEventListener('paste', laboAutoProcesarGasa);
+
+  function laboNumInput(id){
+    const v = fld(id).value;
+    if(v==='' || v==null) return null;
+    const n = parseFloat(v.toString().replace(',', '.'));
+    return isNaN(n) ? null : n;
+  }
+  function laboGcCalcular(){
+    const v = {
+      ph: laboNumInput('gcPh'),
+      pco2: laboNumInput('gcPco2'),
+      hco3: laboNumInput('gcHco3'),
+      po2: laboNumInput('gcPo2'),
+      fio2: laboNumInput('gcFio2'),
+      edad: laboNumInput('gcEdad'),
+    };
+    if(v.ph==null && v.pco2==null && v.hco3==null && v.po2==null && v.fio2==null && v.edad==null){
+      $gcResultado.innerHTML = '';
+      return;
+    }
+    if(v.ph==null || v.pco2==null || v.hco3==null){
+      $gcResultado.innerHTML = 'Cargá al menos pH, pCO2 y HCO3 para calcular.';
+      return;
+    }
+    const html = laboBuildGasResultHtml(v, {showMixedValues:false});
+    $gcResultado.innerHTML = html || 'No se pudo calcular con los valores cargados.';
+  }
+  fld('gcCalcularBtn').addEventListener('click', laboGcCalcular);
+  let gcAutoTimer = null;
+  function laboGcAutoCalcular(){
+    if(gcAutoTimer) clearTimeout(gcAutoTimer);
+    gcAutoTimer = setTimeout(laboGcCalcular, 150);
+  }
+  ['gcPh','gcPco2','gcHco3','gcPo2','gcFio2','gcEdad'].forEach(id=>{
+    fld(id).addEventListener('input', laboGcAutoCalcular);
+  });
+  fld('gcLimpiarBtn').addEventListener('click', ()=>{
+    ['gcPh','gcPco2','gcHco3','gcPo2','gcFio2','gcEdad'].forEach(id=>{ fld(id).value = ''; });
+    $gcResultado.innerHTML = '';
+  });
+
+  laboToday();
+  laboLoadEnabled();
+  laboBuildChecklist();
+  window.laboProcesar = laboProcesar;
+})();
+</script>
+</body>
+</html>
 
