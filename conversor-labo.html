@@ -1427,7 +1427,7 @@ function fld(id){ return document.getElementById(id); }
     const abgInterp = laboBuildAcidBase(gasV, {showMixedValues:true});
     if(abgInterp){
       if(out) out += '<br><br>';
-      out += `<span style="${LABO_FONT}"><b>Interpretación gasométrica</b>: ${abgInterp}</span>`;
+      out += `<span style="${LABO_FONT}"><b>INTERPRETACIÓN GASOMÉTRICA</b>: ${abgInterp}</span>`;
     }
     if(gasV.ph!=null)  fld('gcPh').value = gasV.ph;
     if(gasV.pco2!=null) fld('gcPco2').value = gasV.pco2;
@@ -1600,4 +1600,3 @@ function fld(id){ return document.getElementById(id); }
 </script>
 </body>
 </html>
-
