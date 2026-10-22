@@ -1427,5 +1427,6 @@ function convertirUI(){
 }
 let tm=null; const prog=()=>{ clearTimeout(tm); tm=setTimeout(convertirUI,150); };
 $in.addEventListener('input',prog); $in.addEventListener('paste',prog); $f.addEventListener('change',prog);
+$in.addEventListener('paste',()=>{ [0,60,200].forEach(ms=>setTimeout(()=>{ $in.scrollTop=0; },ms)); });
 document.getElementById('limpiar').addEventListener('click',()=>{ $in.value=''; $out.innerHTML=''; $in.focus(); });
 </script></body></html>
