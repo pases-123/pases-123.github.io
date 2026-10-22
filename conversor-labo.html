@@ -3,21 +3,14 @@
 <style>
   *{box-sizing:border-box;}
   body{margin:0;padding:12px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#222;background:#fff;}
-  textarea{width:100%;height:340px;padding:8px;border:1px solid #bbb;border-radius:3px;font-family:Calibri,Carlito,Arial,sans-serif;font-size:13px;resize:vertical;}
+  textarea{width:100%;height:43px;padding:8px;border:1px solid #bbb;border-radius:3px;font-family:Calibri,Carlito,Arial,sans-serif;font-size:13px;resize:vertical;}
   .row{display:flex;gap:8px;align-items:center;margin:6px 0 12px;flex-wrap:wrap;}
   button{padding:5px 12px;border:1px solid #888;background:#f4f4f4;border-radius:3px;cursor:pointer;font-size:12px;}
   button:hover{background:#e8e8e8;}
   input[type=date]{padding:3px 5px;border:1px solid #bbb;border-radius:3px;font-size:12px;}
-  details{margin-top:14px;border-top:1px solid #ddd;padding-top:8px;}
-  summary{cursor:pointer;color:#555;font-size:12px;}
-  .g{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:10px 0;}
-  .g label{display:flex;flex-direction:column;gap:2px;font-size:11px;color:#555;}
-  .g input[type=number]{padding:4px;border:1px solid #bbb;border-radius:3px;}
-  .g label.c{flex-direction:row;align-items:center;gap:5px;align-self:end;}
-  #gcOut{white-space:pre-wrap;margin-top:8px;line-height:1.5;}
 </style>
 
-<style>#salida{width:100%;height:340px;padding:8px;border:1px solid #bbb;border-radius:3px;font-family:Calibri,Carlito,Arial,sans-serif;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow:auto;resize:vertical;color:#000;background:#fff;}
+<style>#salida{width:100%;height:auto;min-height:85px;padding:8px;border:1px solid #bbb;border-radius:3px;font-family:Calibri,Carlito,Arial,sans-serif;font-size:12pt;line-height:1.5;white-space:pre-wrap;overflow:visible;overflow-wrap:anywhere;color:#000;background:#fff;}
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;} @media(max-width:800px){.cols{grid-template-columns:1fr;}}</style>
 </head><body>
 <div class="cols">
@@ -26,23 +19,8 @@
 </div>
 <div class="row">
   <input type="date" id="fecha">
-  <button type="button" id="copiar">Copiar</button>
   <button type="button" id="limpiar">Limpiar</button>
 </div>
-<details>
-  <summary>Calculadora de gases en sangre</summary>
-  <div class="g">
-    <label>pH <input type="number" step="0.001" id="gcPh"></label>
-    <label>pCO2 (mmHg) <input type="number" step="0.1" id="gcPco2"></label>
-    <label>HCO3 (mEq/L) <input type="number" step="0.1" id="gcHco3"></label>
-    <label>pO2 (mmHg) <input type="number" step="0.1" id="gcPo2"></label>
-    <label>FiO2 (%) <input type="number" step="1" id="gcFio2" placeholder="21"></label>
-    <label>Edad (años) <input type="number" step="1" id="gcEdad"></label>
-    <label class="c"><input type="checkbox" id="gcVenoso"> Muestra venosa</label>
-  </div>
-  <button type="button" id="gcLimpiar">Limpiar</button>
-  <div id="gcOut"></div>
-</details>
 <script>
 const laboEnabled = {};
 const laboRed = t=>t;
@@ -1430,20 +1408,6 @@ function convertir(rawInput, fechaStr){
 
 function hoy(){ const t=new Date(); return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'); }
 function fechaCorta(iso){ if(!iso) return ''; const p=iso.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
-function gcNum(id){ const v=document.getElementById(id).value; if(v==='') return null; const n=parseFloat(String(v).replace(',','.')); return isNaN(n)?null:n; }
-function gcVals(){ return {ph:gcNum('gcPh'),pco2:gcNum('gcPco2'),hco3:gcNum('gcHco3'),po2:gcNum('gcPo2'),fio2:gcNum('gcFio2'),edad:gcNum('gcEdad'),venoso:document.getElementById('gcVenoso').checked}; }
-function gcFill(g){
-  if(!g||g.ph==null||g.pco2==null||g.hco3==null) return;
-  const set=(id,v)=>{ if(v!=null) document.getElementById(id).value=v; };
-  set('gcPh',g.ph);set('gcPco2',g.pco2);set('gcHco3',g.hco3);set('gcPo2',g.po2);set('gcEdad',g.edad);set('gcFio2',g.fio2);
-  document.getElementById('gcVenoso').checked=!!g.venoso;
-}
-function gcShow(txt){ document.getElementById('gcOut').textContent = txt || ''; }
-function gcAuto(){ const v=gcVals(); if(v.ph==null&&v.pco2==null&&v.hco3==null){ gcShow(''); return; } if(v.ph==null||v.pco2==null||v.hco3==null){ gcShow('Cargá al menos pH, pCO2 y HCO3.'); return; } gcCalc(v); }
-function gcBind(){ ['gcPh','gcPco2','gcHco3','gcPo2','gcFio2','gcEdad','gcVenoso'].forEach(id=>{ const e=document.getElementById(id); e.addEventListener('input',()=>{ clearTimeout(window.__gt); window.__gt=setTimeout(gcAuto,150); }); e.addEventListener('change',()=>{ clearTimeout(window.__gt); window.__gt=setTimeout(gcAuto,150); }); });
-  document.getElementById('gcLimpiar').addEventListener('click',()=>{ ['gcPh','gcPco2','gcHco3','gcPo2','gcFio2','gcEdad'].forEach(id=>document.getElementById(id).value=''); document.getElementById('gcVenoso').checked=false; gcShow(''); }); }
-
-function gcCalc(v){ gcShow(gasesTexto(v)); }
 const $in=document.getElementById('entrada'), $out=document.getElementById('salida'), $f=document.getElementById('fecha');
 function fmtSalida(t){
   const e=String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1460,15 +1424,8 @@ $f.value=hoy();
 function convertirUI(){
   const r=convertir($in.value, fechaCorta($f.value));
   $out.innerHTML=fmtSalida(r.texto);
-  if(r.gas && r.gas.ph!=null && r.gas.pco2!=null && r.gas.hco3!=null){ gcFill(r.gas); gcAuto(); }
 }
 let tm=null; const prog=()=>{ clearTimeout(tm); tm=setTimeout(convertirUI,150); };
 $in.addEventListener('input',prog); $in.addEventListener('paste',prog); $f.addEventListener('change',prog);
-document.getElementById('copiar').addEventListener('click',async()=>{
-  const rg=document.createRange(); rg.selectNodeContents($out);
-  const sl=window.getSelection(); sl.removeAllRanges(); sl.addRange(rg);
-  document.execCommand('copy'); sl.removeAllRanges();
-});
 document.getElementById('limpiar').addEventListener('click',()=>{ $in.value=''; $out.innerHTML=''; $in.focus(); });
-gcBind();
 </script></body></html>
